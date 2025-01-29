@@ -206,24 +206,10 @@ def main():
         if st.button("🔄 重新计算风险值", help="当原始数据更新后点击此按钮"):
             with st.spinner("重新计算中..."):
                 risk_df, papers, projects = process_risk_data()
-                risk_df.to_excel('risk_scores_imitation.xlsx', index=False)
             st.success("风险值更新完成！")
 
-        st.download_button(
-            label="📥 下载风险数据",
-            data=open('risk_scores_imitation.xlsx', 'rb').read() if 'risk_df' in globals() else b'',
-            file_name='科研风险数据 - 模仿版.xlsx',
-            mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-        )
-
-    # 尝试加载现有数据
-    try:
-        risk_df = pd.read_excel('risk_scores_imitation.xlsx')
-        papers, projects = load_data()
-    except:
-        with st.spinner("首次运行需要初始化数据..."):
-            risk_df, papers, projects = process_risk_data()
-            risk_df.to_excel('risk_scores_imitation.xlsx', index=False)
+    # 处理数据
+    risk_df, papers, projects = process_risk_data()
 
     # 主界面
     st.title("🔍 科研人员信用风险分析系统 - 模仿版")
