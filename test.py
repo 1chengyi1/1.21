@@ -16,8 +16,8 @@ import plotly.graph_objects as go
 @st.cache_resource(show_spinner=False)
 def load_data():
     # 读取原始数据
-    papers_df = pd.read_excel('data2.xlsx', sheet_name='论文')
-    projects_df = pd.read_excel('data2.xlsx', sheet_name='项目')
+    papers_df = pd.read_excel('data3.xlsx', sheet_name='论文')
+    projects_df = pd.read_excel('data3.xlsx', sheet_name='项目')
     return papers_df, projects_df
 
 def build_networks(papers, projects, weights):
