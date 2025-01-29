@@ -8,7 +8,6 @@ from sklearn.metrics.pairwise import cosine_similarity
 from gensim.models import Word2Vec
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import roc_auc_score, average_precision_score
 import plotly.graph_objects as go
 
 # ==========================
@@ -22,16 +21,15 @@ def load_data():
     return papers_df, projects_df
 
 def build_networks(papers, projects, weights):
-    G_papers, G_projects, G_authors = nx.Graph(), nx.Graph(), nx.Graph()
+    G_authors = nx.Graph()
 
-    def add_edges(df, G):
+    def add_edges(df):
         for _, row in df.iterrows():
-            authors = [row['姓名']]
             weight = weights.get(row['不端原因'], 1)
-            G.add_edge(row['姓名'], row['不端内容'], weight=weight)
+            G_authors.add_edge(row['姓名'], row['不端内容'], weight=weight)
 
-    add_edges(papers, G_papers)
-    add_edges(projects, G_projects)
+    add_edges(papers)
+    add_edges(projects)
 
     # 共同项目/论文连接
     for df in [papers, projects]:
@@ -113,8 +111,7 @@ def process_risk_data():
         X.append(np.concatenate([embeddings[edge[0]], embeddings[edge[1]]]))
         y.append(1)
 
-    non_edges = list(nx.non_edges(G_authors))
-    non_edges = random.sample(non_edges, len(y))
+    non_edges = random.sample(list(nx.non_edges(G_authors)), len(y))
     for edge in non_edges:
         X.append(np.concatenate([embeddings[edge[0]], embeddings[edge[1]]]))
         y.append(0)
