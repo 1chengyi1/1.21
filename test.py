@@ -219,7 +219,7 @@ def main():
                 risk_df, papers, projects = process_risk_data()
                 risk_df.to_excel('risk_scores.xlsx', index=False)
             st.success("风险值更新完成！")
-        
+
         st.download_button(
             label="📥 下载风险数据",
             data=open('risk_scores.xlsx', 'rb').read() if 'risk_df' in globals() else b'',
