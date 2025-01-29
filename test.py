@@ -67,7 +67,6 @@ misconduct_weights = {
     '其他轻微不端行为': 1
 }
 
-
 # DeepWalk 实现
 def deepwalk(graph, walk_length=30, num_walks=200, embedding_size=64, window_size=10):
     walks = []
@@ -97,13 +96,12 @@ def deepwalk(graph, walk_length=30, num_walks=200, embedding_size=64, window_siz
     )
     return model
 
-
 # 设置页面标题
 st.title("科研人员信用风险预警查询")
 
 # 读取Excel文件
-papers_df = pd.read_excel('data3.xlsx', sheet_name='论文')
-projects_df = pd.read_excel('data3.xlsx', sheet_name='项目')
+papers_df = pd.read_excel('data2.xlsx', sheet_name='论文')
+projects_df = pd.read_excel('data2.xlsx', sheet_name='项目')
 
 # 构建作者—论文网络
 G_papers = nx.Graph()
@@ -163,8 +161,20 @@ for i in range(len(research_areas)):
 institution_dict = papers_df.set_index('姓名')['研究机构'].to_dict()
 for author1 in institution_dict:
     for author2 in institution_dict:
-        if author1!= author2 and institution_dict[author1] == institution_dict[author2]:
+        if author1 != author2 and institution_dict[author1] == institution_dict[author2]:
             G_authors.add_edge(author1, author2, weight=1)  # 权重为1表示共同研究机构
+
+# 输出网络信息
+st.markdown("### 网络信息")
+st.write(f"作者—论文网络信息：")
+st.write(f"Number of nodes: {G_papers.number_of_nodes()}")
+st.write(f"Number of edges: {G_papers.number_of_edges()}")
+st.write(f"\n作者—项目网络信息：")
+st.write(f"Number of nodes: {G_projects.number_of_nodes()}")
+st.write(f"Number of edges: {G_projects.number_of_edges()}")
+st.write(f"\n作者—作者网络信息：")
+st.write(f"Number of nodes: {G_authors.number_of_nodes()}")
+st.write(f"Number of edges: {G_authors.number_of_edges()}")
 
 # 训练 DeepWalk 模型
 model = deepwalk(G_authors)
@@ -305,7 +315,7 @@ if query_name:
             # 添加相关作者到图中，并建立边
             for _, row in related_authors.iterrows():
                 author = row['姓名']
-                if author!= query_name:
+                if author != query_name:
                     G.add_node(author)
                     # 确定边的标签（相连的原因）
                     edge_label = []
@@ -362,6 +372,7 @@ if query_name:
             node_trace['x'] += tuple([x])
             node_trace['y'] += tuple([y])
             node_trace['text'] += tuple([node])
+
         fig = go.Figure(data=edge_trace + [node_trace] + edge_labels,
                         layout=go.Layout(
                             title='<br>Network graph of related authors',
