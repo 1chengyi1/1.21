@@ -8,8 +8,8 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import roc_auc_score, average_precision_score
 import numpy as np
 import random
-from node2vec import Node2Vec
 import plotly.graph_objects as go
+from karateclub import DeepWalk
 
 # ==========================
 # 数据预处理和风险值计算模块
@@ -77,10 +77,12 @@ def process_risk_data():
     papers_df, projects_df = load_data()
     G_authors = build_networks(papers_df, projects_df, misconduct_weights)
 
-    # 使用 node2vec 生成节点嵌入
-    node2vec = Node2Vec(G_authors, dimensions=128, walk_length=30, num_walks=200, workers=4)
-    model = node2vec.fit(window=10, min_count=1, batch_words=4)
-    embeddings = {node: model.wv[node] for node in G_authors.nodes()}
+    # 使用 karateclub 的 DeepWalk 生成节点嵌入
+    model = DeepWalk()
+    model.fit(G_authors)
+    embeddings = model.get_embedding()
+    node_list = list(G_authors.nodes())
+    embeddings = {node_list[i]: embeddings[i] for i in range(len(node_list))}
 
     # 构建分类数据集
     X, y = [], []
