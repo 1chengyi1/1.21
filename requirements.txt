@@ -54,3 +54,4 @@ xlsxwriter
 reportlab
 plotly
 networkx
+scikit-learn
