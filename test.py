@@ -5,7 +5,7 @@ import numpy as np
 import random
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
-from gensim.models import Word2Vec
+from node2vec import Node2Vec
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
 import plotly.graph_objects as go
@@ -64,33 +64,6 @@ def build_networks(papers, projects, weights):
 
     return G_authors
 
-def deepwalk(graph, walk_length=30, num_walks=200, embedding_size=128):
-    walks = []
-    nodes = list(graph.nodes())
-    for _ in range(num_walks):
-        random.shuffle(nodes)
-        for node in nodes:
-            walk = [str(node)]
-            current = node
-            for _ in range(walk_length - 1):
-                neighbors = list(graph.neighbors(current))
-                if neighbors:
-                    current = random.choice(neighbors)
-                    walk.append(str(current))
-                else:
-                    break
-            walks.append(walk)
-
-    model = Word2Vec(
-        walks,
-        vector_size=embedding_size,
-        window=10,
-        min_count=1,
-        sg=1,
-        workers=4
-    )
-    return model
-
 @st.cache_resource(show_spinner=False)
 def process_risk_data():
     # 不端原因严重性权重
@@ -102,8 +75,11 @@ def process_risk_data():
 
     papers_df, projects_df = load_data()
     G_authors = build_networks(papers_df, projects_df, misconduct_weights)
-    model = deepwalk(G_authors)
-    embeddings = {node: model.wv[str(node)] for node in G_authors.nodes()}
+
+    # 使用 node2vec 生成节点嵌入
+    node2vec = Node2Vec(G_authors, dimensions=128, walk_length=30, num_walks=200, workers=4)
+    model = node2vec.fit(window=10, min_count=1, batch_words=4)
+    embeddings = {node: model.wv[node] for node in G_authors.nodes()}
 
     # 构建分类数据集
     X, y = [], []
