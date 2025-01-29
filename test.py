@@ -66,8 +66,8 @@ misconduct_weights = {
 }
 
 # 读取数据
-papers_df = pd.read_excel('data2.xlsx', sheet_name='论文')
-projects_df = pd.read_excel('data2.xlsx', sheet_name='项目')
+papers_df = pd.read_excel('data3.xlsx', sheet_name='论文')
+projects_df = pd.read_excel('data3.xlsx', sheet_name='项目')
 
 # 构建作者—论文网络
 G_papers = nx.Graph()
@@ -224,8 +224,8 @@ import plotly.graph_objects as go
 st.title("科研人员信用风险预警查询")
 
 # 读取Excel文件
-df_paper = pd.read_excel('data2.xlsx', sheet_name='论文')
-df_project = pd.read_excel('data2.xlsx', sheet_name='项目')
+df_paper = pd.read_excel('data3.xlsx', sheet_name='论文')
+df_project = pd.read_excel('data3.xlsx', sheet_name='项目')
 df_risk = result_df
 
 # 定义闪烁效果的 CSS
