@@ -9,12 +9,11 @@ from sklearn.metrics import roc_auc_score, average_precision_score
 import numpy as np
 import random
 import plotly.graph_objects as go
-from karateclub import DeepWalk
 
 # ==========================
 # 数据预处理和风险值计算模块
 # ==========================
-@st.cache_data(show_spinner=False)
+@st.cache_resource(show_spinner=False)
 def load_data():
     # 读取原始数据
     papers_df = pd.read_excel('data2.xlsx', sheet_name='论文')
@@ -65,7 +64,36 @@ def build_networks(papers, projects, weights):
 
     return G_authors
 
-@st.cache_data(show_spinner=False)
+def deepwalk(graph, walk_length=30, num_walks=200, embedding_size=128):
+    walks = []
+    nodes = list(graph.nodes())
+    for _ in range(num_walks):
+        random.shuffle(nodes)
+        for node in nodes:
+            walk = [str(node)]
+            current = node
+            for _ in range(walk_length - 1):
+                neighbors = list(graph.neighbors(current))
+                if neighbors:
+                    current = random.choice(neighbors)
+                    walk.append(str(current))
+                else:
+                    break
+            walks.append(walk)
+
+    # 使用 skip-gram 训练嵌入
+    from sklearn.feature_extraction.text import CountVectorizer
+    from sklearn.decomposition import TruncatedSVD
+
+    vectorizer = CountVectorizer()
+    X = vectorizer.fit_transform([' '.join(walk) for walk in walks])
+
+    svd = TruncatedSVD(n_components=embedding_size)
+    embeddings = svd.fit_transform(X)
+
+    return {node: embeddings[i] for i, node in enumerate(vectorizer.get_feature_names_out())}
+
+@st.cache_resource(show_spinner=False)
 def process_risk_data():
     # 不端原因严重性权重
     misconduct_weights = {
@@ -76,13 +104,7 @@ def process_risk_data():
 
     papers_df, projects_df = load_data()
     G_authors = build_networks(papers_df, projects_df, misconduct_weights)
-
-    # 使用 karateclub 的 DeepWalk 生成节点嵌入
-    model = DeepWalk()
-    model.fit(G_authors)
-    embeddings = model.get_embedding()
-    node_list = list(G_authors.nodes())
-    embeddings = {node_list[i]: embeddings[i] for i in range(len(node_list))}
+    embeddings = deepwalk(G_authors)
 
     # 构建分类数据集
     X, y = [], []
