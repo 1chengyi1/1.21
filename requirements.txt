@@ -56,3 +56,4 @@ plotly
 networkx
 scikit-learn
 gensim
+scipy
