@@ -9,18 +9,21 @@ from sklearn.metrics import roc_auc_score, average_precision_score
 import numpy as np
 import random
 import plotly.graph_objects as go
+from sklearn.decomposition import TruncatedSVD
 
 # ==========================
 # 数据预处理和风险值计算模块
 # ==========================
 @st.cache_resource(show_spinner=False)
 def load_data():
+    st.write("Loading data...")
     # 读取原始数据
-    papers_df = pd.read_excel('data3.xlsx', sheet_name='论文')
-    projects_df = pd.read_excel('data3.xlsx', sheet_name='项目')
+    papers_df = pd.read_excel('data2.xlsx', sheet_name='论文')
+    projects_df = pd.read_excel('data2.xlsx', sheet_name='项目')
     return papers_df, projects_df
 
 def build_networks(papers, projects, weights):
+    st.write("Building networks...")
     G_authors = nx.Graph()
 
     def add_edges(df):
@@ -65,6 +68,7 @@ def build_networks(papers, projects, weights):
     return G_authors
 
 def deepwalk(graph, walk_length=30, num_walks=200, embedding_size=128):
+    st.write("Running DeepWalk...")
     walks = []
     nodes = list(graph.nodes())
     for _ in range(num_walks):
@@ -83,7 +87,6 @@ def deepwalk(graph, walk_length=30, num_walks=200, embedding_size=128):
 
     # 使用 skip-gram 训练嵌入
     from sklearn.feature_extraction.text import CountVectorizer
-    from sklearn.decomposition import TruncatedSVD
 
     vectorizer = CountVectorizer()
     X = vectorizer.fit_transform([' '.join(walk) for walk in walks])
@@ -95,59 +98,11 @@ def deepwalk(graph, walk_length=30, num_walks=200, embedding_size=128):
 
 @st.cache_resource(show_spinner=False)
 def process_risk_data():
+    st.write("Processing risk data...")
     # 不端原因严重性权重
     misconduct_weights = {
-        '伪造、篡改图片': 6,
-        '篡改图片': 3,
-        '篡改数据': 3,
-        '篡改数据、图片': 6,
-        '编造研究过程': 4,
-        '编造研究过程、不当署名': 7,
-        '篡改数据、不当署名': 6,
-        '伪造通讯作者邮箱': 2,
-        '实验流程不规范': 2,
-        '数据审核不严': 2,
-        '署名不当、实验流程不规范': 5,
-        '篡改数据、代写代投、伪造通讯作者邮箱、不当署名': 13,
-        '篡改数据、伪造通讯作者邮箱、不当署名': 8,
-        '第三方代写、伪造通讯作者邮箱': 7,
-        '第三方代写代投、伪造数据': 8,
-        '一稿多投': 2,
-        '第三方代写代投、伪造数据、一稿多投': 10,
-        '篡改数据、剽窃': 8,
-        '伪造图片': 3,
-        '伪造图片、不当署名': 6,
-        '委托实验、不当署名': 6,
-        '伪造数据': 3,
-        '伪造数据、篡改图片': 6,
-        '伪造数据、不当署名、伪造通讯作者邮箱等': 8,
-        '伪造数据、一图多用、伪造图片、代投问题': 14,
-        '伪造数据、署名不当': 6,
-        '抄袭剽窃他人项目申请书内容': 6,
-        '伪造通讯作者邮箱、篡改数据和图片': 8,
-        '篡改数据、不当署名': 6,
-        '抄袭他人基金项目申请书': 6,
-        '结题报告中存在虚假信息': 5,
-        '抄袭剽窃': 5,
-        '造假、抄袭': 5,
-        '第三方代写代投': 5,
-        '署名不当': 3,
-        '第三方代写代投、署名不当': 8,
-        '抄袭剽窃、伪造数据': 8,
-        '买卖图片数据': 3,
-        '买卖数据': 3,
-        '买卖论文': 5,
-        '买卖论文、不当署名': 8,
-        '买卖论文数据': 8,
-        '买卖论文数据、不当署名': 11,
-        '买卖图片数据、不当署名': 6,
-        '图片不当使用、伪造数据': 6,
-        '图片不当使用、数据造假、未经同意使用他人署名': 9,
-        '图片不当使用、数据造假、未经同意使用他人署名、编造研究过程': 13,
-        '图片造假、不当署名': 9,
-        '图片造假、不当署名、伪造通讯作者邮箱等': 11,
-        '买卖数据、不当署名': 6,
-        '伪造论文、不当署名': 6,
+        '伪造、篡改图片': 6, '篡改图片': 3, '篡改数据': 3, '篡改数据、图片': 6,
+        '编造研究过程': 4, '编造研究过程、不当署名': 7, '篡改数据、不当署名': 6,
         '其他轻微不端行为': 1
     }
 
@@ -156,6 +111,7 @@ def process_risk_data():
     embeddings = deepwalk(G_authors)
 
     # 构建分类数据集
+    st.write("Building classification dataset...")
     X, y = [], []
     for edge in G_authors.edges():
         X.append(np.concatenate([embeddings[edge[0]], embeddings[edge[1]]]))
@@ -167,6 +123,7 @@ def process_risk_data():
         y.append(0)
 
     # 训练分类器
+    st.write("Training classifier...")
     X = np.array(X)
     y = np.array(y)
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
@@ -174,6 +131,7 @@ def process_risk_data():
     clf.fit(X_train, y_train)
 
     # 计算节点风险值
+    st.write("Calculating risk scores...")
     risk_scores = {node: np.linalg.norm(emb) for node, emb in embeddings.items()}
 
     return pd.DataFrame({
