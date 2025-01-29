@@ -15,138 +15,120 @@ import plotly.graph_objects as go
 # 数据预处理和风险值计算模块
 # ==========================
 @st.cache_resource(show_spinner=False)
+def load_data():
+    # 读取原始数据
+    papers_df = pd.read_excel('data3.xlsx', sheet_name='论文')
+    projects_df = pd.read_excel('data3.xlsx', sheet_name='项目')
+    return papers_df, projects_df
+
+def build_networks(papers, projects, weights):
+    G_papers, G_projects, G_authors = nx.Graph(), nx.Graph(), nx.Graph()
+
+    def add_edges(df, G):
+        for _, row in df.iterrows():
+            authors = [row['姓名']]
+            weight = weights.get(row['不端原因'], 1)
+            G.add_edge(row['姓名'], row['不端内容'], weight=weight)
+
+    add_edges(papers, G_papers)
+    add_edges(projects, G_projects)
+
+    # 共同项目/论文连接
+    for df in [papers, projects]:
+        for _, row in df.iterrows():
+            authors = [row['姓名']]
+            weight = weights.get(row['不端原因'], 1)
+            for i in range(len(authors)):
+                for j in range(i + 1, len(authors)):
+                    if G_authors.has_edge(authors[i], authors[j]):
+                        G_authors[authors[i]][authors[j]]['weight'] += weight
+                    else:
+                        G_authors.add_edge(authors[i], authors[j], weight=weight)
+
+    # 研究方向相似性连接
+    research_areas = papers.groupby('姓名')['研究方向'].apply(lambda x: ' '.join(x)).reset_index()
+    vectorizer = TfidfVectorizer()
+    tfidf_matrix = vectorizer.fit_transform(research_areas['研究方向'])
+    similarity_matrix = cosine_similarity(tfidf_matrix)
+
+    for i in range(len(research_areas)):
+        for j in range(i + 1, len(research_areas)):
+            if similarity_matrix[i, j] > 0.7:
+                a1, a2 = research_areas.iloc[i]['姓名'], research_areas.iloc[j]['姓名']
+                G_authors.add_edge(a1, a2, weight=similarity_matrix[i, j])
+
+    # 共同机构连接
+    institution_map = papers.set_index('姓名')['研究机构'].to_dict()
+    for a1 in institution_map:
+        for a2 in institution_map:
+            if a1 != a2 and institution_map[a1] == institution_map[a2]:
+                G_authors.add_edge(a1, a2, weight=1)
+
+    return G_authors
+
+def deepwalk(graph, walk_length=30, num_walks=200, embedding_size=128):
+    walks = []
+    nodes = list(graph.nodes())
+    for _ in range(num_walks):
+        random.shuffle(nodes)
+        for node in nodes:
+            walk = [str(node)]
+            current = node
+            for _ in range(walk_length - 1):
+                neighbors = list(graph.neighbors(current))
+                if neighbors:
+                    current = random.choice(neighbors)
+                    walk.append(str(current))
+                else:
+                    break
+            walks.append(walk)
+
+    model = Word2Vec(
+        walks,
+        vector_size=embedding_size,
+        window=10,
+        min_count=1,
+        sg=1,
+        workers=4
+    )
+    return model
+
+@st.cache_resource(show_spinner=False)
 def process_risk_data():
     # 不端原因严重性权重
     misconduct_weights = {
         '伪造、篡改图片': 6, '篡改图片': 3, '篡改数据': 3, '篡改数据、图片': 6,
         '编造研究过程': 4, '编造研究过程、不当署名': 7, '篡改数据、不当署名': 6,
-        # ...（保持原有完整的权重字典）
         '其他轻微不端行为': 1
     }
 
-    # 读取原始数据
-    papers_df = pd.read_excel('data3.xlsx', sheet_name='论文')
-    projects_df = pd.read_excel('data3.xlsx', sheet_name='项目')
+    papers_df, projects_df = load_data()
+    G_authors = build_networks(papers_df, projects_df, misconduct_weights)
+    model = deepwalk(G_authors)
+    embeddings = {node: model.wv[str(node)] for node in G_authors.nodes()}
 
-    # ======================
-    # 网络构建函数
-    # ======================
-    def build_networks(papers, projects):
-        # 作者-论文网络
-        G_papers = nx.Graph()
-        for _, row in papers.iterrows():
-            authors = [row['姓名']]
-            weight = misconduct_weights.get(row['不端原因'], 1)
-            G_papers.add_edge(row['姓名'], row['不端内容'], weight=weight)
+    # 构建分类数据集
+    X, y = [], []
+    for edge in G_authors.edges():
+        X.append(np.concatenate([embeddings[edge[0]], embeddings[edge[1]]]))
+        y.append(1)
 
-        # 作者-项目网络
-        G_projects = nx.Graph()
-        for _, row in projects.iterrows():
-            authors = [row['姓名']]
-            weight = misconduct_weights.get(row['不端原因'], 1)
-            G_projects.add_edge(row['姓名'], row['不端内容'], weight=weight)
+    non_edges = list(nx.non_edges(G_authors))
+    non_edges = random.sample(non_edges, len(y))
+    for edge in non_edges:
+        X.append(np.concatenate([embeddings[edge[0]], embeddings[edge[1]]]))
+        y.append(0)
 
-        # 作者-作者网络
-        G_authors = nx.Graph()
-        
-        # 共同项目/论文连接
-        for df in [papers, projects]:
-            for _, row in df.iterrows():
-                authors = [row['姓名']]
-                weight = misconduct_weights.get(row['不端原因'], 1)
-                for i in range(len(authors)):
-                    for j in range(i+1, len(authors)):
-                        if G_authors.has_edge(authors[i], authors[j]):
-                            G_authors[authors[i]][authors[j]]['weight'] += weight
-                        else:
-                            G_authors.add_edge(authors[i], authors[j], weight=weight)
+    # 训练分类器
+    X = np.array(X)
+    y = np.array(y)
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
+    clf = RandomForestClassifier(n_estimators=100)
+    clf.fit(X_train, y_train)
 
-        # 研究方向相似性连接
-        research_areas = papers.groupby('姓名')['研究方向'].apply(lambda x: ' '.join(x)).reset_index()
-        vectorizer = TfidfVectorizer()
-        tfidf_matrix = vectorizer.fit_transform(research_areas['研究方向'])
-        similarity_matrix = cosine_similarity(tfidf_matrix)
-        
-        for i in range(len(research_areas)):
-            for j in range(i+1, len(research_areas)):
-                if similarity_matrix[i,j] > 0.7:
-                    a1 = research_areas.iloc[i]['姓名']
-                    a2 = research_areas.iloc[j]['姓名']
-                    G_authors.add_edge(a1, a2, weight=similarity_matrix[i,j])
+    # 计算节点风险值
+    risk_scores = {node: np.linalg.norm(emb) for node, emb in embeddings.items()}
 
-        # 共同机构连接
-        institution_map = papers.set_index('姓名')['研究机构'].to_dict()
-        for a1 in institution_map:
-            for a2 in institution_map:
-                if a1 != a2 and institution_map[a1] == institution_map[a2]:
-                    G_authors.add_edge(a1, a2, weight=1)
-        
-        return G_authors
-
-    # ======================
-    # DeepWalk实现
-    # ======================
-    def deepwalk(graph, walk_length=30, num_walks=200, embedding_size=128):
-        walks = []
-        nodes = list(graph.nodes())
-        
-        for _ in range(num_walks):
-            random.shuffle(nodes)
-            for node in nodes:
-                walk = [str(node)]
-                current = node
-                for _ in range(walk_length-1):
-                    neighbors = list(graph.neighbors(current))
-                    if neighbors:
-                        current = random.choice(neighbors)
-                        walk.append(str(current))
-                    else:
-                        break
-                walks.append(walk)
-        
-        model = Word2Vec(
-            walks,
-            vector_size=embedding_size,
-            window=10,
-            min_count=1,
-            sg=1,
-            workers=4
-        )
-        return model
-
-    # ======================
-    # 执行计算流程
-    # ======================
-    with st.spinner('正在构建合作网络...'):
-        G_authors = build_networks(papers_df, projects_df)
-    
-    with st.spinner('正在训练DeepWalk模型...'):
-        model = deepwalk(G_authors)
-        embeddings = {node: model.wv[str(node)] for node in G_authors.nodes()}
-    
-    with st.spinner('正在计算风险指标...'):
-        # 构建分类数据集
-        X, y = [], []
-        for edge in G_authors.edges():
-            X.append(np.concatenate([embeddings[edge[0]], embeddings[edge[1]]]))
-            y.append(1)
-        
-        non_edges = list(nx.non_edges(G_authors))
-        non_edges = random.sample(non_edges, len(y))
-        for edge in non_edges:
-            X.append(np.concatenate([embeddings[edge[0]], embeddings[edge[1]]]))
-            y.append(0)
-        
-        # 训练分类器
-        X = np.array(X)
-        y = np.array(y)
-        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
-        clf = RandomForestClassifier(n_estimators=100)
-        clf.fit(X_train, y_train)
-        
-        # 计算节点风险值
-        risk_scores = {node: np.linalg.norm(emb) for node, emb in embeddings.items()}
-    
     return pd.DataFrame({
         '作者': list(risk_scores.keys()),
         '风险值': list(risk_scores.values())
