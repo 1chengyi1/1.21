@@ -3,7 +3,6 @@
 # ==========================
 # 数据预处理和风险值计算模块
 # ==========================
-@st.cache_resource(show_spinner=False)
 def load_data():
     # 读取原始数据
     papers_df = pd.read_excel('data3.xlsx', sheet_name='论文')
