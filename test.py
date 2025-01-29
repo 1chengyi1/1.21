@@ -15,12 +15,19 @@ import plotly.graph_objects as go
 # ==========================
 @st.cache_resource(show_spinner=False)
 def load_data():
-    # 读取原始数据
-    papers_df = pd.read_excel('data3.xlsx', sheet_name='论文')
-    projects_df = pd.read_excel('data3.xlsx', sheet_name='项目')
-    return papers_df, projects_df
+    st.write("Loading data...")
+    try:
+        # 读取原始数据
+        papers_df = pd.read_excel('data3.xlsx', sheet_name='论文')
+        projects_df = pd.read_excel('data3.xlsx', sheet_name='项目')
+        st.write("Data loaded successfully.")
+        return papers_df, projects_df
+    except Exception as e:
+        st.error(f"Error loading data: {e}")
+        return None, None
 
 def build_networks(papers, projects, weights):
+    st.write("Building networks...")
     G_authors = nx.Graph()
 
     def add_edges(df):
@@ -62,9 +69,11 @@ def build_networks(papers, projects, weights):
             if a1 != a2 and institution_map[a1] == institution_map[a2]:
                 G_authors.add_edge(a1, a2, weight=1)
 
+    st.write("Networks built successfully.")
     return G_authors
 
 def deepwalk(graph, walk_length=30, num_walks=200, embedding_size=128):
+    st.write("Running DeepWalk...")
     walks = []
     nodes = list(graph.nodes())
     for _ in range(num_walks):
@@ -91,16 +100,8 @@ def deepwalk(graph, walk_length=30, num_walks=200, embedding_size=128):
     svd = TruncatedSVD(n_components=embedding_size)
     embeddings = svd.fit_transform(X)
 
+    st.write("DeepWalk completed successfully.")
     return {node: embeddings[i] for i, node in enumerate(vectorizer.get_feature_names_out())}
-
-@st.cache_resource(show_spinner=False)
-def load_data():
-    st.write("Loading data...")
-    # 读取原始数据
-    papers_df = pd.read_excel('data3.xlsx', sheet_name='论文')
-    projects_df = pd.read_excel('data3.xlsx', sheet_name='项目')
-    st.write("Data loaded successfully.")
-    return papers_df, projects_df
 
 @st.cache_resource(show_spinner=False)
 def process_risk_data():
@@ -162,6 +163,10 @@ def process_risk_data():
     }
 
     papers_df, projects_df = load_data()
+    if papers_df is None or projects_df is None:
+        st.error("Data loading failed.")
+        return None, None, None
+
     G_authors = build_networks(papers_df, projects_df, misconduct_weights)
     embeddings = deepwalk(G_authors)
 
@@ -217,9 +222,12 @@ def main():
         if st.button("🔄 重新计算风险值", help="当原始数据更新后点击此按钮"):
             with st.spinner("重新计算中..."):
                 risk_df, papers, projects = process_risk_data()
-                risk_df.to_excel('risk_scores.xlsx', index=False)
+                if risk_df is not None:
+                    risk_df.to_excel('risk_scores.xlsx', index=False)
+                else:
+                    st.error("Risk data processing failed.")
             st.success("风险值更新完成！")
-
+        
         st.download_button(
             label="📥 下载风险数据",
             data=open('risk_scores.xlsx', 'rb').read() if 'risk_df' in globals() else b'',
@@ -231,10 +239,14 @@ def main():
     try:
         risk_df = pd.read_excel('risk_scores.xlsx')
         papers, projects = load_data()
-    except:
+    except Exception as e:
+        st.error(f"Error loading risk scores: {e}")
         with st.spinner("首次运行需要初始化数据..."):
             risk_df, papers, projects = process_risk_data()
-            risk_df.to_excel('risk_scores.xlsx', index=False)
+            if risk_df is not None:
+                risk_df.to_excel('risk_scores.xlsx', index=False)
+            else:
+                st.error("Failed to initialize data.")
 
     # 主界面
     st.title("🔍 科研人员信用风险分析系统")
