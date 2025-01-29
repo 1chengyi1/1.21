@@ -58,3 +58,5 @@ scikit-learn
 scipy
 node2vec
 setuptools
+karateclub
+
