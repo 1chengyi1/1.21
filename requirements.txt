@@ -56,3 +56,4 @@ plotly
 networkx
 scikit-learn
 scipy
+node2vec
