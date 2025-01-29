@@ -102,8 +102,8 @@ def deepwalk(graph, walk_length=30, num_walks=200, embedding_size=64, window_siz
 st.title("科研人员信用风险预警查询")
 
 # 读取Excel文件
-papers_df = pd.read_excel('data2.xlsx', sheet_name='论文')
-projects_df = pd.read_excel('data2.xlsx', sheet_name='项目')
+papers_df = pd.read_excel('data3.xlsx', sheet_name='论文')
+projects_df = pd.read_excel('data3.xlsx', sheet_name='项目')
 
 # 构建作者—论文网络
 G_papers = nx.Graph()
