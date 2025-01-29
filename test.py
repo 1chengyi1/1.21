@@ -94,7 +94,17 @@ def deepwalk(graph, walk_length=30, num_walks=200, embedding_size=128):
     return {node: embeddings[i] for i, node in enumerate(vectorizer.get_feature_names_out())}
 
 @st.cache_resource(show_spinner=False)
+def load_data():
+    st.write("Loading data...")
+    # 读取原始数据
+    papers_df = pd.read_excel('data3.xlsx', sheet_name='论文')
+    projects_df = pd.read_excel('data3.xlsx', sheet_name='项目')
+    st.write("Data loaded successfully.")
+    return papers_df, projects_df
+
+@st.cache_resource(show_spinner=False)
 def process_risk_data():
+    st.write("Processing risk data...")
     # 不端原因严重性权重
     misconduct_weights = {
         '伪造、篡改图片': 6,
@@ -176,6 +186,7 @@ def process_risk_data():
     # 计算节点风险值
     risk_scores = {node: np.linalg.norm(emb) for node, emb in embeddings.items()}
 
+    st.write("Risk data processed successfully.")
     return pd.DataFrame({
         '作者': list(risk_scores.keys()),
         '风险值': list(risk_scores.values())
