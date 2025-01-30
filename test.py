@@ -82,16 +82,18 @@ def process_risk_data():
         # 作者-论文网络
         G_papers = nx.Graph()
         for _, row in papers.iterrows():
-            authors = [row['姓名']]
+            authors = row['姓名'].split(',')
             weight = misconduct_weights.get(row['不端原因'], 1)
-            G_papers.add_edge(row['姓名'], row['不端内容'], weight=weight)
+            for author in authors:
+                G_papers.add_edge(author.strip(), row['不端内容'], weight=weight)
 
         # 作者-项目网络
         G_projects = nx.Graph()
         for _, row in projects.iterrows():
-            authors = [row['姓名']]
+            authors = row['姓名'].split(',')
             weight = misconduct_weights.get(row['不端原因'], 1)
-            G_projects.add_edge(row['姓名'], row['不端内容'], weight=weight)
+            for author in authors:
+                G_projects.add_edge(author.strip(), row['不端内容'], weight=weight)
 
         # 作者-作者网络
         G_authors = nx.Graph()
@@ -99,14 +101,14 @@ def process_risk_data():
         # 共同项目/论文连接
         for df in [papers, projects]:
             for _, row in df.iterrows():
-                authors = [row['姓名']]
+                authors = row['姓名'].split(',')
                 weight = misconduct_weights.get(row['不端原因'], 1)
                 for i in range(len(authors)):
                     for j in range(i+1, len(authors)):
-                        if G_authors.has_edge(authors[i], authors[j]):
-                            G_authors[authors[i]][authors[j]]['weight'] += weight
+                        if G_authors.has_edge(authors[i].strip(), authors[j].strip()):
+                            G_authors[authors[i].strip()][authors[j].strip()]['weight'] += weight
                         else:
-                            G_authors.add_edge(authors[i], authors[j], weight=weight)
+                            G_authors.add_edge(authors[i].strip(), authors[j].strip(), weight=weight)
 
         # 研究方向相似性连接
         research_areas = papers.groupby('姓名')['研究方向'].apply(lambda x: ' '.join(x)).reset_index()
@@ -119,14 +121,14 @@ def process_risk_data():
                 if similarity_matrix[i,j] > 0.7:
                     a1 = research_areas.iloc[i]['姓名']
                     a2 = research_areas.iloc[j]['姓名']
-                    G_authors.add_edge(a1, a2, weight=similarity_matrix[i,j])
+                    G_authors.add_edge(a1.strip(), a2.strip(), weight=similarity_matrix[i,j])
 
         # 共同机构连接
         institution_map = papers.set_index('姓名')['研究机构'].to_dict()
         for a1 in institution_map:
             for a2 in institution_map:
                 if a1 != a2 and institution_map[a1] == institution_map[a2]:
-                    G_authors.add_edge(a1, a2, weight=1)
+                    G_authors.add_edge(a1.strip(), a2.strip(), weight=1)
         
         return G_authors
 
@@ -231,8 +233,8 @@ def main():
     # 尝试加载现有数据
     try:
         risk_df = pd.read_excel('risk_scores.xlsx')
-        papers = pd.read_excel('data3.xlsx', sheet_name='论文')
-        projects = pd.read_excel('data3.xlsx', sheet_name='项目')
+        papers = pd.readexcel('data3.xlsx', sheet_name='论文')
+        projects = pd.readexcel('data3.xlsx', sheet_name='项目')
     except:
         with st.spinner("首次运行需要初始化数据..."):
             risk_df, papers, projects = process_risk_data()
