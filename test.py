@@ -2,7 +2,7 @@ import pandas as pd
 import networkx as nx
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
-from gensim.models import Word2Vec
+from node2vec import Node2Vec
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import roc_auc_score, average_precision_score
@@ -70,8 +70,8 @@ misconduct_weights = {
 # 读取数据
 @st.cache_data
 def load_data():
-    papers_df = pd.read_excel('data3.xlsx', sheet_name='论文')
-    projects_df = pd.read_excel('data3.xlsx', sheet_name='项目')
+    papers_df = pd.read_excel('data2.xlsx', sheet_name='论文')
+    projects_df = pd.read_excel('data2.xlsx', sheet_name='项目')
     return papers_df, projects_df
 
 papers_df, projects_df = load_data()
@@ -140,37 +140,22 @@ for author1 in institution_dict:
         if author1 != author2 and institution_dict[author1] == institution_dict[author2]:
             G_authors.add_edge(author1, author2, weight=1)  # 权重为1表示共同研究机构
 
-# DeepWalk 实现
-def deepwalk(graph, walk_length=30, num_walks=200, embedding_size=64, window_size=10):
-    walks = []
-    nodes = list(graph.nodes())
-    # 生成随机游走序列
-    for _ in range(num_walks):
-        random.shuffle(nodes)
-        for node in nodes:
-            walk = [str(node)]  # 将节点转换为字符串
-            current_node = node
-            for _ in range(walk_length - 1):
-                neighbors = list(graph.neighbors(current_node))
-                if len(neighbors) > 0:
-                    current_node = random.choice(neighbors)
-                    walk.append(str(current_node))  # 将节点转换为字符串
-                else:
-                    break
-            walks.append(walk)
-    # 使用 Word2Vec 训练嵌入
-    model = Word2Vec(
-        walks,
-        vector_size=embedding_size,
-        window=window_size,
-        min_count=1,
-        sg=1,  # 使用 skip-gram
+# Node2Vec 实现
+def node2vec_embedding(graph, walk_length=30, num_walks=200, embedding_size=64, window_size=10):
+    # 初始化 Node2Vec
+    node2vec = Node2Vec(
+        graph,
+        dimensions=embedding_size,
+        walk_length=walk_length,
+        num_walks=num_walks,
         workers=4
     )
+    # 训练模型
+    model = node2vec.fit(window=window_size, min_count=1, batch_words=4)
     return model
 
-# 训练 DeepWalk 模型
-model = deepwalk(G_authors)
+# 训练 Node2Vec 模型
+model = node2vec_embedding(G_authors)
 
 # 提取节点嵌入
 embeddings = {node: model.wv[str(node)] for node in G_authors.nodes()}
@@ -352,32 +337,4 @@ if query_name:
                 hoverinfo='none'
             ))
         node_trace = go.Scatter(
-            x=[], y=[], text=[], mode='markers+text', hoverinfo='text',
-            marker=dict(
-                showscale=True,
-                colorscale='YlGnBu',
-                size=10,
-                colorbar=dict(
-                    thickness=15,
-                    title='Node Connections',
-                    xanchor='left',
-                    titleside='right'
-                )
-            )
-        )
-        for node in G.nodes():
-            x, y = pos[node]
-            node_trace['x'] += tuple([x])
-            node_trace['y'] += tuple([y])
-            node_trace['text'] += tuple([node])
-        fig = go.Figure(data=edge_trace + [node_trace] + edge_labels,
-                        layout=go.Layout(
-                            title='<br>Network graph of related authors',
-                            titlefont_size=16,
-                            showlegend=False,
-                            hovermode='closest',
-                            margin=dict(b=20, l=5, r=5, t=40),
-                            xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
-                            yaxis=dict(showgrid=False, zeroline=False, showticklabels=False)
-                        ))
-        st.plotly_chart(fig)
+            x=[], y=[], text=[], mode='markers+text
