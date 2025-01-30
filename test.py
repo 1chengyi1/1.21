@@ -337,4 +337,32 @@ if query_name:
                 hoverinfo='none'
             ))
         node_trace = go.Scatter(
-            x=[], y=[], text=[], mode='markers+text
+            x=[], y=[], text=[], mode='markers+text', hoverinfo='text',
+            marker=dict(
+                showscale=True,
+                colorscale='YlGnBu',
+                size=10,
+                colorbar=dict(
+                    thickness=15,
+                    title='Node Connections',
+                    xanchor='left',
+                    titleside='right'
+                )
+            )
+        )
+        for node in G.nodes():
+            x, y = pos[node]
+            node_trace['x'] += tuple([x])
+            node_trace['y'] += tuple([y])
+            node_trace['text'] += tuple([node])
+        fig = go.Figure(data=edge_trace + [node_trace] + edge_labels,
+                        layout=go.Layout(
+                            title='<br>Network graph of related authors',
+                            titlefont_size=16,
+                            showlegend=False,
+                            hovermode='closest',
+                            margin=dict(b=20, l=5, r=5, t=40),
+                            xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
+                            yaxis=dict(showgrid=False, zeroline=False, showticklabels=False)
+                        ))
+        st.plotly_chart(fig)
