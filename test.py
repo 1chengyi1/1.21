@@ -5,15 +5,11 @@ import numpy as np
 import random
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
+from gensim.models import Word2Vec
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import roc_auc_score, average_precision_score
 import plotly.graph_objects as go
-
-# 设置随机种子
-random_seed = 42
-np.random.seed(random_seed)
-random.seed(random_seed)
 
 # ==========================
 # 数据预处理和风险值计算模块
@@ -136,36 +132,35 @@ def process_risk_data():
         return G_authors
 
     # ======================
-    # 基于随机游走的节点嵌入实现
+    # DeepWalk实现
     # ======================
-    def random_walk(graph, start_node, walk_length):
-        walk = [start_node]
-        for _ in range(walk_length - 1):
-            neighbors = list(graph.neighbors(walk[-1]))
-            if not neighbors:
-                break
-            walk.append(random.choice(neighbors))
-        return walk
-
-    def generate_walks(graph, num_walks, walk_length):
+    def deepwalk(graph, walk_length=30, num_walks=200, embedding_size=128):
         walks = []
         nodes = list(graph.nodes())
+        
         for _ in range(num_walks):
             random.shuffle(nodes)
             for node in nodes:
-                walks.append(random_walk(graph, node, walk_length))
-        return walks
-
-    def node2vec_embedding(graph, num_walks=10, walk_length=80, embedding_size=128):
-        walks = generate_walks(graph, num_walks, walk_length)
-        # 通过计数词频实现简单的嵌入
-        from collections import Counter
-        node_freq = Counter([node for walk in walks for node in walk])
-        node_to_idx = {node: idx for idx, node in enumerate(graph.nodes())}
-        embeddings = np.zeros((len(graph.nodes()), embedding_size))
-        for i, node in enumerate(graph.nodes()):
-            embeddings[i] = np.random.normal(size=embedding_size) / np.sqrt(node_freq[node])
-        return {node: embeddings[node_to_idx[node]] for node in graph.nodes()}
+                walk = [str(node)]
+                current = node
+                for _ in range(walk_length-1):
+                    neighbors = list(graph.neighbors(current))
+                    if neighbors:
+                        current = random.choice(neighbors)
+                        walk.append(str(current))
+                    else:
+                        break
+                walks.append(walk)
+        
+        model = Word2Vec(
+            walks,
+            vector_size=embedding_size,
+            window=10,
+            min_count=1,
+            sg=1,
+            workers=4
+        )
+        return model
 
     # ======================
     # 执行计算流程
@@ -173,8 +168,9 @@ def process_risk_data():
     with st.spinner('正在构建合作网络...'):
         G_authors = build_networks(papers_df, projects_df)
     
-    with st.spinner('正在生成节点嵌入...'):
-        embeddings = node2vec_embedding(G_authors)
+    with st.spinner('正在训练DeepWalk模型...'):
+        model = deepwalk(G_authors)
+        embeddings = {node: model.wv[str(node)] for node in G_authors.nodes()}
     
     with st.spinner('正在计算风险指标...'):
         # 构建分类数据集
@@ -192,8 +188,8 @@ def process_risk_data():
         # 训练分类器
         X = np.array(X)
         y = np.array(y)
-        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=random_seed)
-        clf = RandomForestClassifier(n_estimators=100, random_state=random_seed)
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
+        clf = RandomForestClassifier(n_estimators=100)
         clf.fit(X_train, y_train)
         
         # 计算节点风险值
@@ -232,6 +228,13 @@ def main():
                 risk_df.to_excel('risk_scores.xlsx', index=False)
             st.success("风险值更新完成！")
         
+        st.download_button(
+            label="📥 下载风险数据",
+            data=open('risk_scores.xlsx', 'rb').read() if 'risk_df' in globals() else b'',
+            file_name='科研风险数据.xlsx',
+            mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        )
+
     # 尝试加载现有数据
     try:
         risk_df = pd.read_excel('risk_scores.xlsx')
