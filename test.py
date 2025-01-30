@@ -8,6 +8,8 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import roc_auc_score, average_precision_score
 import numpy as np
 import random
+import streamlit as st
+import plotly.graph_objects as go
 
 # 不端原因严重性权重
 misconduct_weights = {
@@ -66,8 +68,13 @@ misconduct_weights = {
 }
 
 # 读取数据
-papers_df = pd.read_excel('data3.xlsx', sheet_name='论文')
-projects_df = pd.read_excel('data3.xlsx', sheet_name='项目')
+@st.cache_data
+def load_data():
+    papers_df = pd.read_excel('data2.xlsx', sheet_name='论文')
+    projects_df = pd.read_excel('data2.xlsx', sheet_name='项目')
+    return papers_df, projects_df
+
+papers_df, projects_df = load_data()
 
 # 构建作者—论文网络
 G_papers = nx.Graph()
@@ -128,30 +135,15 @@ for i in range(len(research_areas)):
 
 # 4. 共同的研究机构
 institution_dict = papers_df.set_index('姓名')['研究机构'].to_dict()
-
 for author1 in institution_dict:
     for author2 in institution_dict:
         if author1 != author2 and institution_dict[author1] == institution_dict[author2]:
             G_authors.add_edge(author1, author2, weight=1)  # 权重为1表示共同研究机构
 
-# 输出网络信息
-print("作者—论文网络信息：")
-print(f"Number of nodes: {G_papers.number_of_nodes()}")
-print(f"Number of edges: {G_papers.number_of_edges()}")
-
-print("\n作者—项目网络信息：")
-print(f"Number of nodes: {G_projects.number_of_nodes()}")
-print(f"Number of edges: {G_projects.number_of_edges()}")
-
-print("\n作者—作者网络信息：")
-print(f"Number of nodes: {G_authors.number_of_nodes()}")
-print(f"Number of edges: {G_authors.number_of_edges()}")
-
 # DeepWalk 实现
 def deepwalk(graph, walk_length=30, num_walks=200, embedding_size=64, window_size=10):
     walks = []
     nodes = list(graph.nodes())
-
     # 生成随机游走序列
     for _ in range(num_walks):
         random.shuffle(nodes)
@@ -166,7 +158,6 @@ def deepwalk(graph, walk_length=30, num_walks=200, embedding_size=64, window_siz
                 else:
                     break
             walks.append(walk)
-
     # 使用 Word2Vec 训练嵌入
     model = Word2Vec(
         walks,
@@ -210,23 +201,13 @@ y_pred = clf.predict_proba(X_test)[:, 1]
 auc_roc = roc_auc_score(y_test, y_pred)
 auc_pr = average_precision_score(y_test, y_pred)
 
-# 保存结果
+# 计算风险值
 authors = list(G_authors.nodes())
 risk_scores = [np.linalg.norm(embeddings[author]) for author in authors]  # 使用嵌入向量的 L2 范数作为风险值
-result_df = pd.DataFrame({'作者': authors, '风险值': risk_scores})
+risk_df = pd.DataFrame({'作者': authors, '风险值': risk_scores})
 
-import streamlit as st
-import pandas as pd
-import networkx as nx
-import plotly.graph_objects as go
-
-# 设置页面标题
+# Streamlit 应用
 st.title("科研人员信用风险预警查询")
-
-# 读取Excel文件
-df_paper = pd.read_excel('data3.xlsx', sheet_name='论文')
-df_project = pd.read_excel('data3.xlsx', sheet_name='项目')
-df_risk = result_df
 
 # 定义闪烁效果的 CSS
 blink_css = """
@@ -241,7 +222,6 @@ blink_css = """
     color: red;
     font-weight: bold;
 }
-
 /* 表格样式优化 */
 .dataframe {
     width: 100%;
@@ -260,7 +240,6 @@ blink_css = """
     background-color: #f2f2f2;
     font-weight: bold;
 }
-
 /* 添加滚动条 */
 .dataframe-wrapper {
     max-height: 400px; /* 设置最大高度 */
@@ -269,7 +248,6 @@ blink_css = """
 }
 </style>
 """
-
 # 添加闪烁效果的 CSS
 st.markdown(blink_css, unsafe_allow_html=True)
 
@@ -279,14 +257,13 @@ if st.button("返回主页"):
 
 # 输入查询名字
 query_name = st.text_input("请输入查询名字：")
-
 if query_name:
     # 在论文表中寻找姓名等于查询输入的名字
-    result_paper = df_paper[df_paper['姓名'] == query_name]
+    result_paper = papers_df[papers_df['姓名'] == query_name]
     # 在项目表中寻找姓名等于查询输入的名字
-    result_project = df_project[df_project['姓名'] == query_name]
+    result_project = projects_df[projects_df['姓名'] == query_name]
     # 在风险值表中寻找作者等于查询输入的名字
-    result_risk = df_risk[df_risk['作者'] == query_name]
+    result_risk = risk_df[risk_df['作者'] == query_name]
 
     # 生成论文查询结果表格
     if not result_paper.empty:
@@ -294,7 +271,7 @@ if query_name:
         # 将表格转换为 HTML，并添加滚动条
         html_table1 = result_paper.to_html(index=False, escape=False, classes='dataframe')
         st.markdown(f"<div class='dataframe-wrapper'>{html_table1}</div>", unsafe_allow_html=True)
-    
+
     # 生成项目查询结果表格
     if not result_project.empty:
         st.markdown("### 项目查询结果")
@@ -306,7 +283,6 @@ if query_name:
     if not result_risk.empty:
         st.markdown("### 风险值查询结果")
         risk_value = result_risk.iloc[0]['风险值']
-        
         # 根据风险值显示不同的提示信息
         if risk_value > 2.5:
             st.markdown(f"<p class='blink'>作者: {result_risk.iloc[0]['作者']}, 风险值: {risk_value}（高风险）</p>", unsafe_allow_html=True)
@@ -318,27 +294,22 @@ if query_name:
     # 构建网络关系图
     if not result_paper.empty or not result_project.empty:
         st.markdown("### 网络关系图")
-        
         # 创建一个空的无向图
         G = nx.Graph()
-        
         # 添加查询作者到图中
         G.add_node(query_name)
-        
         # 查找与查询作者有共同研究机构、研究方向或不端内容的作者
         if not result_paper.empty:
             # 获取查询作者的研究机构、研究方向和不端内容
             research_institution = result_paper.iloc[0]['研究机构']
             research_direction = result_paper.iloc[0]['研究方向']
             misconduct_content = result_paper.iloc[0]['不端内容']
-            
             # 查找与查询作者有共同研究机构、研究方向或不端内容的作者
-            related_authors = df_paper[
-                (df_paper['研究机构'] == research_institution) |
-                (df_paper['研究方向'] == research_direction) |
-                (df_paper['不端内容'] == misconduct_content)
+            related_authors = papers_df[
+                (papers_df['研究机构'] == research_institution) |
+                (papers_df['研究方向'] == research_direction) |
+                (papers_df['不端内容'] == misconduct_content)
             ]
-            
             # 添加相关作者到图中，并建立边
             for _, row in related_authors.iterrows():
                 author = row['姓名']
@@ -354,7 +325,7 @@ if query_name:
                         edge_label.append(f"不端内容: {misconduct_content}")
                     edge_label = "\n".join(edge_label)
                     G.add_edge(query_name, author, label=edge_label)
-        
+
         # 使用 plotly 绘制网络图
         pos = nx.spring_layout(G, k=0.5)  # 布局算法，增加节点间距
         edge_trace = []
@@ -380,7 +351,6 @@ if query_name:
                 textfont=dict(size=12, color='black'),  # 调整字体大小
                 hoverinfo='none'
             ))
-        
         node_trace = go.Scatter(
             x=[], y=[], text=[], mode='markers+text', hoverinfo='text',
             marker=dict(
@@ -395,13 +365,11 @@ if query_name:
                 )
             )
         )
-        
         for node in G.nodes():
             x, y = pos[node]
             node_trace['x'] += tuple([x])
             node_trace['y'] += tuple([y])
             node_trace['text'] += tuple([node])
-        
         fig = go.Figure(data=edge_trace + [node_trace] + edge_labels,
                         layout=go.Layout(
                             title='<br>Network graph of related authors',
@@ -412,5 +380,4 @@ if query_name:
                             xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
                             yaxis=dict(showgrid=False, zeroline=False, showticklabels=False)
                         ))
-        
         st.plotly_chart(fig)
