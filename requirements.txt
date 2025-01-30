@@ -55,5 +55,5 @@ reportlab
 plotly
 networkx
 scikit-learn
-
+scipy
 
