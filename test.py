@@ -275,12 +275,12 @@ def main():
     table td {
         white - space: normal;
     }
-  .stDataFrame tbody tr {
+ .stDataFrame tbody tr {
         display: block;
         overflow - y: auto;
         height: 200px;
     }
-  .stDataFrame tbody {
+ .stDataFrame tbody {
         display: block;
     }
     </style>
@@ -318,8 +318,8 @@ def main():
             st.warning("未找到匹配的研究人员")
             return
 
-        # 选择具体人员
-        selected = st.selectbox("请选择具体人员：", candidates['作者'])
+        # 直接选择第一个匹配人员
+        selected = candidates['作者'].iloc[0]
 
         # 获取详细信息
         author_risk = risk_df[risk_df['作者'] == selected].iloc[0]['风险值']
@@ -411,6 +411,7 @@ def main():
                 )
                 st.plotly_chart(fig, use_container_width=True)
             build_network_graph(selected)
+
 
 
 
