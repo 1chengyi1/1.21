@@ -1,9 +1,9 @@
 streamlit
 pandas
-networkx 
+networkx
 numpy
-scikit-learn 
+scipy
+scikit-learn
+gensim
 plotly
 openpyxl
-gensim
-scipy
