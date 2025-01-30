@@ -55,7 +55,5 @@ reportlab
 plotly
 networkx
 scikit-learn
-node2vec
-setuptools
-karateclub
+
 
