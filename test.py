@@ -377,6 +377,7 @@ def main():
                     x1, y1 = pos[edge[1]]
                     edge_x.extend([x0, x1, None])
                     edge_y.extend([y0, y1, None])
+
                 node_x = [pos[n][0] for n in G.nodes()]
                 node_y = [pos[n][1] for n in G.nodes()]
 
