@@ -4,6 +4,6 @@ networkx
 numpy
 scipy
 scikit-learn
-gensim
+node2vec
 plotly
 openpyxl
