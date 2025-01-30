@@ -304,100 +304,98 @@ def main():
             st.warning("未找到匹配的研究人员")
             return
 
-        # 选择具体人员
-        selected = st.selectbox("请选择具体人员：", candidates['作者'])
-
         # 获取详细信息
-        author_risk = risk_df[risk_df['作者'] == selected].iloc[0]['风险值']
-        paper_records = papers[papers['姓名'] == selected]
-        project_records = projects[projects['姓名'] == selected]
+        for selected in candidates['作者']:
+            author_risk = risk_df[risk_df['作者'] == selected].iloc[0]['风险值']
+            paper_records = papers[papers['姓名'] == selected]
+            project_records = projects[projects['姓名'] == selected]
 
-        # ======================
-        # 信息展示
-        # ======================
-        st.subheader("📄 论文记录")
-        if not paper_records.empty:
-            st.dataframe(paper_records, use_container_width=True)
-        else:
-            st.info("暂无论文不端记录")
+            # ======================
+            # 信息展示
+            # ======================
+            st.subheader(f"📄 论文记录 - {selected}")
+            if not paper_records.empty:
+                st.dataframe(paper_records, use_container_width=True)
+            else:
+                st.info("暂无论文不端记录")
 
-        st.subheader("📋 项目记录")
-        if not project_records.empty:
-            st.dataframe(project_records, use_container_width=True)
-        else:
-            st.info("暂无项目不端记录")
+            st.subheader(f"📋 项目记录 - {selected}")
+            if not project_records.empty:
+                st.dataframe(project_records, use_container_width=True)
+            else:
+                st.info("暂无项目不端记录")
 
-        # 风险指标
-        st.subheader("📊 风险分析")
-        risk_level = "high" if author_risk > 2.5 else "low"
-        cols = st.columns(4)
-        cols[0].metric("信用评分", f"{author_risk:.2f}",
-                      delta_color="inverse" if risk_level == "high" else "normal")
-        cols[1].metric("风险等级",
-                      f"{'⚠️ 高风险' if risk_level == 'high' else '✅ 低风险'}",
-                      help="高风险阈值：2.5")
+            # 风险指标
+            st.subheader(f"📊 风险分析 - {selected}")
+            risk_level = "high" if author_risk > 2.5 else "low"
+            cols = st.columns(4)
+            cols[0].metric("信用评分", f"{author_risk:.2f}",
+                          delta_color="inverse" if risk_level == "high" else "normal")
+            cols[1].metric("风险等级",
+                          f"{'⚠️ 高风险' if risk_level == 'high' else '✅ 低风险'}",
+                          help="高风险阈值：2.5")
 
-        # ======================
-        # 关系网络可视化
-        # ======================
-        with st.expander("🕸️ 展开合作关系网络", expanded=True):
-            def build_network_graph(author):
-                G = nx.Graph()
-                G.add_node(author, size=20, color='red')
+            # ======================
+            # 关系网络可视化
+            # ======================
+            with st.expander(f"🕸️ 展开合作关系网络 - {selected}", expanded=True):
+                def build_network_graph(author):
+                    G = nx.Graph()
+                    G.add_node(author, size=20, color='red')
 
-                # 查找关联节点
-                related = papers[
-                    (papers['研究机构'] == papers[papers['姓名'] == author]['研究机构'].iloc[0]) |
-                    (papers['研究方向'] == papers[papers['姓名'] == author]['研究方向'].iloc[0])
-                ]['姓名'].unique()
+                    # 查找关联节点
+                    related = papers[
+                        (papers['研究机构'] == papers[papers['姓名'] == author]['研究机构'].iloc[0]) |
+                        (papers['研究方向'] == papers[papers['姓名'] == author]['研究方向'].iloc[0])
+                    ]['姓名'].unique()
 
-                for person in related:
-                    if person != author:
-                        G.add_node(person, size=15, color='blue')
-                        G.add_edge(author, person,
-                                  title=f"共同研究方向: {papers[papers['姓名'] == person]['研究方向'].iloc[0]}")
+                    for person in related:
+                        if person != author:
+                            G.add_node(person, size=15, color='blue')
+                            G.add_edge(author, person,
+                                      title=f"共同研究方向: {papers[papers['姓名'] == person]['研究方向'].iloc[0]}")
 
-                # Plotly可视化
-                pos = nx.spring_layout(G)
-                edge_x, edge_y = [], []
-                for edge in G.edges():
-                    x0, y0 = pos[edge[0]]
-                    x1, y1 = pos[edge[1]]
-                    edge_x.extend([x0, x1, None])
-                    edge_y.extend([y0, y1, None])
+                    # Plotly可视化
+                    pos = nx.spring_layout(G)
+                    edge_x, edge_y = [], []
+                    for edge in G.edges():
+                        x0, y0 = pos[edge[0]]
+                        x1, y1 = pos[edge[1]]
+                        edge_x.extend([x0, x1, None])
+                        edge_y.extend([y0, y1, None])
 
-                node_x = [pos[n][0] for n in G.nodes()]
-                node_y = [pos[n][1] for n in G.nodes()]
+                    node_x = [pos[n][0] for n in G.nodes()]
+                    node_y = [pos[n][1] for n in G.nodes()]
 
-                fig = go.Figure(
-                    data=[
-                        go.Scatter(
-                            x=edge_x, y=edge_y,
-                            line=dict(width=0.5, color='#888'),
-                            hoverinfo='none',
-                            mode='lines'),
-                        go.Scatter(
-                            x=node_x, y=node_y,
-                            mode='markers+text',
-                            text=list(G.nodes()),
-                            textposition="top center",
-                            marker=dict(
-                                showscale=True,
-                                colorscale='YlGnBu',
-                                size=[d['size'] for d in G.nodes.values()],
-                                color=[d['color'] for d in G.nodes.values()],
-                                line_width=2))
-                    ],
-                    layout=go.Layout(
-                        showlegend=False,
-                        hovermode='closest',
-                        margin=dict(b=0, l=0, r=0, t=0),
-                        xaxis=dict(showgrid=False, zeroline=False),
-                        yaxis=dict(showgrid=False, zeroline=False))
-                )
-                st.plotly_chart(fig, use_container_width=True)
+                    fig = go.Figure(
+                        data=[
+                            go.Scatter(
+                                x=edge_x, y=edge_y,
+                                line=dict(width=0.5, color='#888'),
+                                hoverinfo='none',
+                                mode='lines'),
+                            go.Scatter(
+                                x=node_x, y=node_y,
+                                mode='markers+text',
+                                text=list(G.nodes()),
+                                textposition="top center",
+                                marker=dict(
+                                    showscale=True,
+                                    colorscale='YlGnBu',
+                                    size=[d['size'] for d in G.nodes.values()],
+                                    color=[d['color'] for d in G.nodes.values()],
+                                    line_width=2))
+                        ],
+                        layout=go.Layout(
+                            showlegend=False,
+                            hovermode='closest',
+                            margin=dict(b=0, l=0, r=0, t=0),
+                            xaxis=dict(showgrid=False, zeroline=False),
+                            yaxis=dict(showgrid=False, zeroline=False))
+                    )
+                    st.plotly_chart(fig, use_container_width=True)
 
-            build_network_graph(selected)
+                build_network_graph(selected)
 
 
 if __name__ == "__main__":
