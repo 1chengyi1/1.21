@@ -14,13 +14,12 @@ import plotly.graph_objects as go
 # ==========================
 # 数据预处理和风险值计算模块
 # ==========================
-@st.cache_resource(show_spinner=False)
+@st.cache_data(show_spinner=False)
 def process_risk_data():
     # 不端原因严重性权重
     misconduct_weights = {
         '伪造、篡改图片': 6, '篡改图片': 3, '篡改数据': 3, '篡改数据、图片': 6,
         '编造研究过程': 4, '编造研究过程、不当署名': 7, '篡改数据、不当署名': 6,
-        # ...（保持原有完整的权重字典）
         '其他轻微不端行为': 1
     }
 
@@ -190,8 +189,8 @@ def main():
     # 尝试加载现有数据
     try:
         risk_df = pd.read_excel('risk_scores.xlsx')
-        papers = pd.read_excel('data2.xlsx', sheet_name='论文')
-        projects = pd.read_excel('data2.xlsx', sheet_name='项目')
+        papers = pd.read_excel('data3.xlsx', sheet_name='论文')
+        projects = pd.read_excel('data3.xlsx', sheet_name='项目')
     except:
         with st.spinner("首次运行需要初始化数据..."):
             risk_df, papers, projects = process_risk_data()
