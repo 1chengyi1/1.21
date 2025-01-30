@@ -365,20 +365,24 @@ def main():
                     (papers['研究方向'] == papers[papers['姓名'] == author]['研究方向'].iloc[0])
                 ]['姓名'].unique()
 
+                edge_texts = []  # 存储边的标签信息
                 for person in related:
                     if person!= author:
                         G.add_node(person, size = 15, color='blue')
-                        G.add_edge(author, person,
-                                   title=f"共同研究方向: {papers[papers['姓名'] == person]['研究方向'].iloc[0]}")
+                        title = f"共同研究方向: {papers[papers['姓名'] == person]['研究方向'].iloc[0]}"
+                        G.add_edge(author, person, title=title)
+                        edge_texts.append(title)
 
                 # Plotly可视化
                 pos = nx.spring_layout(G)
                 edge_x, edge_y = [], []
-                for edge in G.edges():
+                edge_hovertexts = []  # 存储边的悬停文本信息
+                for edge, text in zip(G.edges(), edge_texts):
                     x0, y0 = pos[edge[0]]
                     x1, y1 = pos[edge[1]]
                     edge_x.extend([x0, x1, None])
                     edge_y.extend([y0, y1, None])
+                    edge_hovertexts.extend([text, text, None])
 
                 node_x = [pos[n][0] for n in G.nodes()]
                 node_y = [pos[n][1] for n in G.nodes()]
@@ -388,7 +392,8 @@ def main():
                         go.Scatter(
                             x = edge_x, y = edge_y,
                             line=dict(width = 0.5, color='#888'),
-                            hoverinfo='none',
+                            hoverinfo='text',
+                            hovertext=edge_hovertexts
                             mode='lines'),
                         go.Scatter(
                             x = node_x, y = node_y,
@@ -411,8 +416,6 @@ def main():
                 )
                 st.plotly_chart(fig, use_container_width=True)
             build_network_graph(selected)
-
-
 
 
 if __name__ == "__main__":
