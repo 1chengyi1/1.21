@@ -5,7 +5,10 @@ import numpy as np
 import random
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
-from gensim.models import Word2Vec
+try:
+    from gensim.models import Word2Vec
+except ImportError as e:
+    st.error(f"ImportError: {e}")
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import roc_auc_score, average_precision_score
