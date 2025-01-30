@@ -25,8 +25,8 @@ def process_risk_data():
     }
 
     # 读取原始数据
-    papers_df = pd.read_excel('data2.xlsx', sheet_name='论文')
-    projects_df = pd.read_excel('data2.xlsx', sheet_name='项目')
+    papers_df = pd.read_excel('data3.xlsx', sheet_name='论文')
+    projects_df = pd.read_excel('data3.xlsx', sheet_name='项目')
 
     # ======================
     # 网络构建函数
