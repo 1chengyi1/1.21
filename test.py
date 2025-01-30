@@ -365,41 +365,33 @@ def main():
                     (papers['研究方向'] == papers[papers['姓名'] == author]['研究方向'].iloc[0])
                 ]['姓名'].unique()
 
-                edge_texts = []  # 存储边的标签信息
                 for person in related:
                     if person!= author:
                         G.add_node(person, size = 15, color='blue')
-                        title = f"共同研究方向: {papers[papers['姓名'] == person]['研究方向'].iloc[0]}"
-                        G.add_edge(author, person, title=title)
-                        edge_texts.append(title)
+                        G.add_edge(author, person,
+                                   title=f"共同研究方向: {papers[papers['姓名'] == person]['研究方向'].iloc[0]}")
 
                 # Plotly可视化
                 pos = nx.spring_layout(G)
                 edge_x, edge_y = [], []
-                edge_hovertexts = []  # 存储边的悬停文本信息
-                for edge, text in zip(G.edges(), edge_texts):
+                for edge in G.edges():
                     x0, y0 = pos[edge[0]]
                     x1, y1 = pos[edge[1]]
                     edge_x.extend([x0, x1, None])
                     edge_y.extend([y0, y1, None])
-                    edge_hovertexts.extend([text, text, None])
 
                 node_x = [pos[n][0] for n in G.nodes()]
                 node_y = [pos[n][1] for n in G.nodes()]
 
-                # 前面的代码保持不变
-
                 fig = go.Figure(
                     data=[
                         go.Scatter(
-                            x=edge_x, y=edge_y,
-                            line=dict(width=0.5, color='#888'),
-                            hoverinfo='text',
-                            hovertext=edge_hovertexts,  # 这里需要添加逗号
-                            mode='lines'
-                        ),
+                            x = edge_x, y = edge_y,
+                            line=dict(width = 0.5, color='#888'),
+                            hoverinfo='none',
+                            mode='lines'),
                         go.Scatter(
-                            x=node_x, y=node_y,
+                            x = node_x, y = node_y,
                             mode='markers+text',
                             text=list(G.nodes()),
                             textposition="top center",
@@ -408,17 +400,14 @@ def main():
                                 colorscale='YlGnBu',
                                 size=[d['size'] for d in G.nodes.values()],
                                 color=[d['color'] for d in G.nodes.values()],
-                                line_width=2
-                            )
-                        )
+                                line_width = 2))
                     ],
                     layout=go.Layout(
                         showlegend=False,
                         hovermode='closest',
-                        margin=dict(b=0, l=0, r=0, t=0),
+                        margin=dict(b = 0, l = 0, r = 0, t = 0),
                         xaxis=dict(showgrid=False, zeroline=False),
-                        yaxis=dict(showgrid=False, zeroline=False)
-                    )
+                        yaxis=dict(showgrid=False, zeroline=False))
                 )
                 st.plotly_chart(fig, use_container_width=True)
             build_network_graph(selected)
