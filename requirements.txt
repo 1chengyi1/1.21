@@ -57,3 +57,4 @@ scikit-learn
 gensim
 scipy
 node2vec
+python=3.11
