@@ -1,6 +1,3 @@
-要去除下载风险数据这个按钮，只需要在 `main` 函数中删除与下载按钮相关的代码块即可。以下是修改后的代码：
-
-```python
 import streamlit as st
 import pandas as pd
 import networkx as nx
