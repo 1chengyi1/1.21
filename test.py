@@ -9,7 +9,10 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import roc_auc_score, average_precision_score
 import plotly.graph_objects as go
-from node2vec import Node2Vec
+import torch
+import torch.nn as nn
+import torch.optim as optim
+from torch.utils.data import Dataset, DataLoader
 
 # ==========================
 # 数据预处理和风险值计算模块
@@ -132,12 +135,85 @@ def process_risk_data():
         return G_authors
 
     # ======================
-    # DeepWalk实现（使用Node2Vec代替Word2Vec）
+    # Skip-gram模型定义
+    # ======================
+    class SkipGramModel(nn.Module):
+        def __init__(self, vocab_size, embedding_size):
+            super(SkipGramModel, self).__init__()
+            self.embeddings = nn.Embedding(vocab_size, embedding_size)
+            self.out = nn.Linear(embedding_size, vocab_size)
+
+        def forward(self, inputs):
+            embeds = self.embeddings(inputs)
+            outputs = self.out(embeds)
+            return outputs
+
+    # ======================
+    # 数据集定义
+    # ======================
+    class SkipGramDataset(Dataset):
+        def __init__(self, walks, node2id):
+            self.walks = walks
+            self.node2id = node2id
+
+        def __len__(self):
+            return len(self.walks)
+
+        def __getitem__(self, idx):
+            walk = self.walks[idx]
+            input_ids = [self.node2id[node] for node in walk[:-1]]
+            target_ids = [self.node2id[node] for node in walk[1:]]
+            return torch.tensor(input_ids), torch.tensor(target_ids)
+
+    # ======================
+    # DeepWalk实现
     # ======================
     def deepwalk(graph, walk_length=30, num_walks=200, embedding_size=128):
-        node2vec = Node2Vec(graph, dimensions=embedding_size, walk_length=walk_length, num_walks=num_walks)
-        model = node2vec.fit(window=10, min_count=1)
-        embeddings = {node: model.wv[str(node)] for node in graph.nodes()}
+        walks = []
+        nodes = list(graph.nodes())
+
+        for _ in range(num_walks):
+            random.shuffle(nodes)
+            for node in nodes:
+                walk = [str(node)]
+                current = node
+                for _ in range(walk_length - 1):
+                    neighbors = list(graph.neighbors(current))
+                    if neighbors:
+                        current = random.choice(neighbors)
+                        walk.append(str(current))
+                    else:
+                        break
+                walks.append(walk)
+
+        # 构建节点到ID的映射
+        node2id = {node: idx for idx, node in enumerate(set([node for walk in walks for node in walk]))}
+        id2node = {idx: node for node, idx in node2id.items()}
+
+        # 构建数据集
+        dataset = SkipGramDataset(walks, node2id)
+        dataloader = DataLoader(dataset, batch_size=32, shuffle=True)
+
+        # 模型初始化
+        model = SkipGramModel(len(node2id), embedding_size)
+        criterion = nn.CrossEntropyLoss()
+        optimizer = optim.Adam(model.parameters(), lr=0.001)
+
+        # 训练模型
+        for epoch in range(10):
+            for inputs, targets in dataloader:
+                optimizer.zero_grad()
+                outputs = model(inputs)
+                loss = criterion(outputs.view(-1, len(node2id)), targets.view(-1))
+                loss.backward()
+                optimizer.step()
+
+        # 获取嵌入
+        embeddings = {}
+        with torch.no_grad():
+            for node, idx in node2id.items():
+                embeddings[node] = model.embeddings(torch.tensor([idx])).squeeze().numpy()
+
         return embeddings
 
     # ======================
@@ -267,10 +343,10 @@ def main():
         risk_level = "high" if author_risk > 2.5 else "low"
         cols = st.columns(4)
         cols[0].metric("信用评分", f"{author_risk:.2f}",
-                       delta_color="inverse" if risk_level == "high" else "normal")
+                      delta_color="inverse" if risk_level == "high" else "normal")
         cols[1].metric("风险等级",
-                       f"{'⚠️ 高风险' if risk_level == 'high' else '✅ 低风险'}",
-                       help="高风险阈值：2.5")
+                      f"{'⚠️ 高风险' if risk_level == 'high' else '✅ 低风险'}",
+                      help="高风险阈值：2.5")
 
         # ======================
         # 关系网络可视化
@@ -290,7 +366,7 @@ def main():
                     if person != author:
                         G.add_node(person, size=15, color='blue')
                         G.add_edge(author, person,
-                                   title=f"共同研究方向: {papers[papers['姓名'] == person]['研究方向'].iloc[0]}")
+                                  title=f"共同研究方向: {papers[papers['姓名'] == person]['研究方向'].iloc[0]}")
 
                 # Plotly可视化
                 pos = nx.spring_layout(G)
