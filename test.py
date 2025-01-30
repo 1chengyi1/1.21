@@ -14,6 +14,50 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import Dataset, DataLoader
 
+# 定义闪烁效果的 CSS
+blink_css = """
+<style>
+@keyframes blink {
+    0% { opacity: 1; }
+    50% { opacity: 0; }
+    100% { opacity: 1; }
+}
+.blink {
+    animation: blink 1s infinite;
+    color: red;
+    font-weight: bold;
+}
+
+/* 表格样式优化 */
+.dataframe {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+}
+.dataframe th, .dataframe td {
+    padding: 8px;
+    text-align: left;
+    border: 1px solid #ddd;
+    max-width: 300px; /* 限制列宽 */
+    white-space: normal; /* 允许换行 */
+    word-wrap: break-word; /* 允许单词内换行 */
+}
+.dataframe th {
+    background-color: #f2f2f2;
+    font-weight: bold;
+}
+
+/* 添加滚动条 */
+.dataframe-wrapper {
+    max-height: 400px; /* 设置最大高度 */
+    overflow-y: auto; /* 添加垂直滚动条 */
+    margin-bottom: 20px;
+}
+</style>
+"""
+
+st.markdown(blink_css, unsafe_allow_html=True)
+
 # ==========================
 # 数据预处理和风险值计算模块
 # ==========================
@@ -317,13 +361,15 @@ def main():
             # ======================
             st.subheader(f"📄 论文记录 - {selected}")
             if not paper_records.empty:
-                st.dataframe(paper_records, use_container_width=True, height=400)
+                html_table1 = paper_records.to_html(index=False, escape=False, classes='dataframe')
+                st.markdown(f"<div class='dataframe-wrapper'>{html_table1}</div>", unsafe_allow_html=True)
             else:
                 st.info("暂无论文不端记录")
 
             st.subheader(f"📋 项目记录 - {selected}")
             if not project_records.empty:
-                st.dataframe(project_records, use_container_width=True, height=400)
+                html_table2 = project_records.to_html(index=False, escape=False, classes='dataframe')
+                st.markdown(f"<div class='dataframe-wrapper'>{html_table2}</div>", unsafe_allow_html=True)
             else:
                 st.info("暂无项目不端记录")
 
@@ -332,10 +378,10 @@ def main():
             risk_level = "high" if author_risk > 2.5 else "low"
             cols = st.columns(4)
             cols[0].metric("信用评分", f"{author_risk:.2f}",
-                          delta_color="inverse" if risk_level == "high" else "normal")
+                           delta_color="inverse" if risk_level == "high" else "normal")
             cols[1].metric("风险等级",
-                          f"{'⚠️ 高风险' if risk_level == 'high' else '✅ 低风险'}",
-                          help="高风险阈值：2.5")
+                           f"{'⚠️ 高风险' if risk_level == 'high' else '✅ 低风险'}",
+                           help="高风险阈值：2.5")
 
             # ======================
             # 关系网络可视化
@@ -355,7 +401,7 @@ def main():
                         if person != author:
                             G.add_node(person, size=15, color='blue')
                             G.add_edge(author, person,
-                                      title=f"共同研究方向: {papers[papers['姓名'] == person]['研究方向'].iloc[0]}")
+                                       title=f"共同研究方向: {papers[papers['姓名'] == person]['研究方向'].iloc[0]}")
 
                     # Plotly可视化
                     pos = nx.spring_layout(G)
@@ -391,10 +437,11 @@ def main():
                         layout=go.Layout(
                             showlegend=False,
                             hovermode='closest',
-                            margin=dict(b=0, l=0, r=0, t=0),
-                            xaxis=dict(showgrid=False, zeroline=False),
-                            yaxis=dict(showgrid=False, zeroline=False),
-                            height=400)
+                            margin=dict(b=0, l=0, r=5, t=40),
+                            xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
+                            yaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
+                            height=400
+                        )
                     )
                     st.plotly_chart(fig, use_container_width=True)
 
