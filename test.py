@@ -13,12 +13,53 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import Dataset, DataLoader
-import functools
+
+# 定义闪烁效果的 CSS
+blink_css = """
+<style>
+@keyframes blink {
+    0% { opacity: 1; }
+    50% { opacity: 0; }
+    100% { opacity: 1; }
+}
+.blink {
+    animation: blink 1s infinite;
+    color: red;
+    font-weight: bold;
+}
+/* 表格样式优化 */
+.dataframe {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+}
+.dataframe th, .dataframe td {
+    padding: 8px;
+    text-align: left;
+    border: 1px solid #ddd;
+    max-width: 300px; /* 限制列宽 */
+    white-space: normal; /* 允许换行 */
+    word-wrap: break-word; /* 允许单词内换行 */
+}
+.dataframe th {
+    background-color: #f2f2f2;
+    font-weight: bold;
+}
+/* 添加滚动条 */
+.dataframe-wrapper {
+    max-height: 400px; /* 设置最大高度 */
+    overflow-y: auto; /* 添加垂直滚动条 */
+    margin-bottom: 20px;
+}
+</style>
+"""
+
+st.markdown(blink_css, unsafe_allow_html=True)
 
 # ==========================
 # 数据预处理和风险值计算模块
 # ==========================
-@functools.lru_cache(maxsize=None)
+@st.cache_data(show_spinner=False)
 def process_risk_data():
     # 不端原因严重性权重
     misconduct_weights = {
@@ -270,6 +311,8 @@ def main():
     .high-risk { color: red; font-weight: bold; animation: blink 1s infinite; }
     @keyframes blink { 0% {opacity:1;} 50% {opacity:0;} 100% {opacity:1;} }
     .metric-box { padding: 20px; border-radius: 10px; background: #f0f2f6; margin: 10px; }
+    .dataframe-container .dataframe { width: 100% !important; }
+    .dataframe-container .dataframe th, .dataframe-container .dataframe td { text-align: left !important; white-space: normal !important; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -281,13 +324,6 @@ def main():
                 risk_df, papers, projects = process_risk_data()
                 risk_df.to_excel('risk_scores.xlsx', index=False)
             st.success("风险值更新完成！")
-
-        st.download_button(
-            label="📥 下载风险数据",
-            data=open('risk_scores.xlsx', 'rb').read() if 'risk_df' in globals() else b'',
-            file_name='科研风险数据.xlsx',
-            mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-        )
 
     # 尝试加载现有数据
     try:
@@ -312,104 +348,103 @@ def main():
             st.warning("未找到匹配的研究人员")
             return
 
-        # 选择具体人员
-        selected = st.selectbox("请选择具体人员：", candidates['作者'])
-
         # 获取详细信息
-        author_risk = risk_df[risk_df['作者'] == selected].iloc[0]['风险值']
-        paper_records = papers[papers['姓名'] == selected]
-        project_records = projects[projects['姓名'] == selected]
+        for selected in candidates['作者']:
+            author_risk = risk_df[risk_df['作者'] == selected].iloc[0]['风险值']
+            paper_records = papers[papers['姓名'] == selected]
+            project_records = projects[projects['姓名'] == selected]
 
-        # ======================
-        # 信息展示
-        # ======================
-        col1, col2 = st.columns(2)
-
-        with col1:
-            st.subheader("📄 论文记录")
+            # ======================
+            # 信息展示
+            # ======================
+            st.subheader(f"📄 论文记录 - {selected}")
             if not paper_records.empty:
-                st.dataframe(paper_records, use_container_width=True)
+                html_table1 = paper_records.to_html(index=False, escape=False, classes='dataframe')
+                st.markdown(f"<div class='dataframe-wrapper'>{html_table1}</div>", unsafe_allow_html=True)
             else:
                 st.info("暂无论文不端记录")
 
-        with col2:
-            st.subheader("📋 项目记录")
+            st.subheader(f"📋 项目记录 - {selected}")
             if not project_records.empty:
-                st.dataframe(project_records, use_container_width=True)
+                html_table2 = project_records.to_html(index=False, escape=False, classes='dataframe')
+                st.markdown(f"<div class='dataframe-wrapper'>{html_table2}</div>", unsafe_allow_html=True)
             else:
                 st.info("暂无项目不端记录")
 
-        # 风险指标
-        st.subheader("📊 风险分析")
-        risk_level = "high" if author_risk > 2.5 else "low"
-        cols = st.columns(4)
-        cols[0].metric("信用评分", f"{author_risk:.2f}",
-                      delta_color="inverse" if risk_level == "high" else "normal")
-        cols[1].metric("风险等级",
-                      f"{'⚠️ 高风险' if risk_level == 'high' else '✅ 低风险'}",
-                      help="高风险阈值：2.5")
+            # 风险指标
+            st.subheader(f"📊 风险分析 - {selected}")
+            risk_level = "high" if author_risk > 2.5 else "low"
+            cols = st.columns(4)
+            cols[0].metric("信用评分", f"{author_risk:.2f}",
+                           delta_color="inverse" if risk_level == "high" else "normal")
+            cols[1].metric("风险等级",
+                           f"{'⚠️ 高风险' if risk_level == 'high' else '✅ 低风险'}",
+                           help="高风险阈值：2.5")
 
-        # ======================
-        # 关系网络可视化
-        # ======================
-        with st.expander("🕸️ 展开合作关系网络", expanded=True):
-            def build_network_graph(author):
-                G = nx.Graph()
-                G.add_node(author, size=20, color='red')
+            # ======================
+            # 关系网络可视化
+            # ======================
+            with st.expander(f"🕸️ 展开合作关系网络 - {selected}", expanded=True):
+                def build_network_graph(author):
+                    G = nx.Graph()
+                    G.add_node(author, size=20, color='red')
 
-                # 查找关联节点
-                related = papers[
-                    (papers['研究机构'] == papers[papers['姓名'] == author]['研究机构'].iloc[0]) |
-                    (papers['研究方向'] == papers[papers['姓名'] == author]['研究方向'].iloc[0])
-                ]['姓名'].unique()
+                    # 查找关联节点
+                    related = papers[
+                        (papers['研究机构'] == papers[papers['姓名'] == author]['研究机构'].iloc[0]) |
+                        (papers['研究方向'] == papers[papers['姓名'] == author]['研究方向'].iloc[0])
+                    ]['姓名'].unique()
 
-                for person in related:
-                    if person != author:
-                        G.add_node(person, size=15, color='blue')
-                        G.add_edge(author, person,
-                                  title=f"共同研究方向: {papers[papers['姓名'] == person]['研究方向'].iloc[0]}")
+                    for person in related:
+                        if person != author:
+                            G.add_node(person, size=15, color='blue')
+                            G.add_edge(author, person,
+                                       title=f"共同研究方向: {papers[papers['姓名'] == person]['研究方向'].iloc[0]}")
 
-                # Plotly可视化
-                pos = nx.spring_layout(G)
-                edge_x, edge_y = [], []
-                for edge in G.edges():
-                    x0, y0 = pos[edge[0]]
-                    x1, y1 = pos[edge[1]]
-                    edge_x.extend([x0, x1, None])
-                    edge_y.extend([y0, y1, None])
+                    # Plotly可视化
+                    pos = nx.spring_layout(G)
+                    edge_x, edge_y = [], []
+                    for edge in G.edges():
+                        x0, y0 = pos[edge[0]]
+                        x1, y1 = pos[edge[1]]
+                        edge_x.extend([x0, x1, None])
+                        edge_y.extend([y0, y1, None])
 
-                node_x = [pos[n][0] for n in G.nodes()]
-                node_y = [pos[n][1] for n in G.nodes()]
+                    node_x = [pos[n][0] for n in G.nodes()]
+                    node_y = [pos[n][1] for n in G.nodes()]
 
-                fig = go.Figure(
-                    data=[
-                        go.Scatter(
-                            x=edge_x, y=edge_y,
-                            line=dict(width=0.5, color='#888'),
-                            hoverinfo='none',
-                            mode='lines'),
-                        go.Scatter(
-                            x=node_x, y=node_y,
-                            mode='markers+text',
-                            text=list(G.nodes()),
-                            textposition="top center",
-                            marker=dict(
-                                showscale=True,
-                                colorscale='YlGnBu',
-                                size=[d['size'] for d in G.nodes.values()],
-                                color=[d['color'] for d in G.nodes.values()],
-                                line_width=2))
-                    ],
-                    layout=go.Layout(
-                        showlegend=False,
-                        hovermode='closest',
-                        margin=dict(b=0, l=0, r=0, t=0),
-                        xaxis=dict(showgrid=False, zeroline=False),
-                        yaxis=dict(showgrid=False, zeroline=False))
-                )
-                st.plotly_chart(fig, use_container_width=True)
+                    fig = go.Figure(
+                        data=[
+                            go.Scatter(
+                                x=edge_x, y=edge_y,
+                                line=dict(width=0.5, color='#888'),
+                                hoverinfo='none',
+                                mode='lines'),
+                            go.Scatter(
+                                x=node_x, y=node_y,
+                                mode='markers+text',
+                                text=list(G.nodes()),
+                                textposition="top center",
+                                marker=dict(
+                                    showscale=True,
+                                    colorscale='YlGnBu',
+                                    size=[d['size'] for d in G.nodes.values()],
+                                    color=[d['color'] for d in G.nodes.values()],
+                                    line_width=2))
+                        ],
+                        layout=go.Layout(
+                            showlegend=False,
+                            hovermode='closest',
+                            margin=dict(b=0, l=0, r=5, t=40),
+                            margin=dict(b=20, l=5, r=5, t=40),
+                            xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
+                            yaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
+                            height=400
+                        )
+                    )
+                    st.plotly_chart(fig, use_container_width=True)
 
-            build_network_graph(selected)
+                build_network_graph(selected)
 
 
 if __name__ == "__main__":
