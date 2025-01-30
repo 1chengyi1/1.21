@@ -7,3 +7,4 @@ node2vec
 plotly
 openpyxl
 setuptools
+scipy
