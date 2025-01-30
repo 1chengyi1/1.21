@@ -266,9 +266,15 @@ def main():
     # 自定义CSS样式
     st.markdown("""
     <style>
-  .high-risk { color: red; font-weight: bold; animation: blink 1s infinite; }
+ .high-risk { color: red; font-weight: bold; animation: blink 1s infinite; }
     @keyframes blink { 0% {opacity:1;} 50% {opacity:0;} 100% {opacity:1;} }
-  .metric-box { padding: 20px; border-radius: 10px; background: #f0f2f6; margin: 10px; }
+ .metric-box { padding: 20px; border-radius: 10px; background: #f0f2f6; margin: 10px; }
+    table {
+        table-layout: fixed;
+    }
+    table td {
+        white-space: normal;
+    }
     </style>
     """, unsafe_allow_html=True)
 
@@ -315,21 +321,17 @@ def main():
         # ======================
         # 信息展示
         # ======================
-        col1, col2 = st.columns(2)
+        st.subheader("📄 论文记录")
+        if not paper_records.empty:
+            st.dataframe(paper_records, use_container_width=True)
+        else:
+            st.info("暂无论文不端记录")
 
-        with col1:
-            st.subheader("📄 论文记录")
-            if not paper_records.empty:
-                st.dataframe(paper_records, use_container_width=True)
-            else:
-                st.info("暂无论文不端记录")
-
-        with col2:
-            st.subheader("📋 项目记录")
-            if not project_records.empty:
-                st.dataframe(project_records, use_container_width=True)
-            else:
-                st.info("暂无项目不端记录")
+        st.subheader("📋 项目记录")
+        if not project_records.empty:
+            st.dataframe(project_records, use_container_width=True)
+        else:
+            st.info("暂无项目不端记录")
 
         # 风险指标
         st.subheader("📊 风险分析")
