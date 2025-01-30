@@ -387,16 +387,19 @@ def main():
                 node_x = [pos[n][0] for n in G.nodes()]
                 node_y = [pos[n][1] for n in G.nodes()]
 
+                # 前面的代码保持不变
+
                 fig = go.Figure(
                     data=[
                         go.Scatter(
-                            x = edge_x, y = edge_y,
-                            line=dict(width = 0.5, color='#888'),
+                            x=edge_x, y=edge_y,
+                            line=dict(width=0.5, color='#888'),
                             hoverinfo='text',
-                            hovertext=edge_hovertexts
-                            mode='lines'),
+                            hovertext=edge_hovertexts,  # 这里需要添加逗号
+                            mode='lines'
+                        ),
                         go.Scatter(
-                            x = node_x, y = node_y,
+                            x=node_x, y=node_y,
                             mode='markers+text',
                             text=list(G.nodes()),
                             textposition="top center",
@@ -405,14 +408,17 @@ def main():
                                 colorscale='YlGnBu',
                                 size=[d['size'] for d in G.nodes.values()],
                                 color=[d['color'] for d in G.nodes.values()],
-                                line_width = 2))
+                                line_width=2
+                            )
+                        )
                     ],
                     layout=go.Layout(
                         showlegend=False,
                         hovermode='closest',
-                        margin=dict(b = 0, l = 0, r = 0, t = 0),
+                        margin=dict(b=0, l=0, r=0, t=0),
                         xaxis=dict(showgrid=False, zeroline=False),
-                        yaxis=dict(showgrid=False, zeroline=False))
+                        yaxis=dict(showgrid=False, zeroline=False)
+                    )
                 )
                 st.plotly_chart(fig, use_container_width=True)
             build_network_graph(selected)
