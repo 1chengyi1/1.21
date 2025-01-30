@@ -55,5 +55,6 @@ reportlab
 plotly
 networkx
 scikit-learn
-gensim==4.3.2
-scipy==1.10.1
+gensim
+scipy
+node2vec
