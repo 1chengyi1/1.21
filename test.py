@@ -266,14 +266,22 @@ def main():
     # 自定义CSS样式
     st.markdown("""
     <style>
- .high-risk { color: red; font-weight: bold; animation: blink 1s infinite; }
+.high - risk { color: red; font - weight: bold; animation: blink 1s infinite; }
     @keyframes blink { 0% {opacity:1;} 50% {opacity:0;} 100% {opacity:1;} }
- .metric-box { padding: 20px; border-radius: 10px; background: #f0f2f6; margin: 10px; }
+.metric - box { padding: 20px; border - radius: 10px; background: #f0f2f6; margin: 10px; }
     table {
-        table-layout: fixed;
+        table - layout: fixed;
     }
     table td {
-        white-space: normal;
+        white - space: normal;
+    }
+  .stDataFrame tbody tr {
+        display: block;
+        overflow - y: auto;
+        height: 200px;
+    }
+  .stDataFrame tbody {
+        display: block;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -284,7 +292,7 @@ def main():
         if st.button("🔄 重新计算风险值", help="当原始数据更新后点击此按钮"):
             with st.spinner("重新计算中..."):
                 risk_df, papers, projects = process_risk_data()
-                risk_df.to_excel('risk_scores.xlsx', index=False)
+                risk_df.to_excel('risk_scores.xlsx', index = False)
             st.success("风险值更新完成！")
 
     # 尝试加载现有数据
@@ -295,7 +303,7 @@ def main():
     except:
         with st.spinner("首次运行需要初始化数据..."):
             risk_df, papers, projects = process_risk_data()
-            risk_df.to_excel('risk_scores.xlsx', index=False)
+            risk_df.to_excel('risk_scores.xlsx', index = False)
 
     # 主界面
     st.title("🔍 科研人员信用风险分析系统")
@@ -323,13 +331,13 @@ def main():
         # ======================
         st.subheader("📄 论文记录")
         if not paper_records.empty:
-            st.dataframe(paper_records, use_container_width=True)
+            st.markdown(paper_records.to_html(escape=False), unsafe_allow_html=True)
         else:
             st.info("暂无论文不端记录")
 
         st.subheader("📋 项目记录")
         if not project_records.empty:
-            st.dataframe(project_records, use_container_width=True)
+            st.markdown(project_records.to_html(escape=False), unsafe_allow_html=True)
         else:
             st.info("暂无项目不端记录")
 
@@ -338,10 +346,10 @@ def main():
         risk_level = "high" if author_risk > 2.5 else "low"
         cols = st.columns(4)
         cols[0].metric("信用评分", f"{author_risk:.2f}",
-                      delta_color="inverse" if risk_level == "high" else "normal")
+                       delta_color="inverse" if risk_level == "high" else "normal")
         cols[1].metric("风险等级",
-                      f"{'⚠️ 高风险' if risk_level == 'high' else '✅ 低风险'}",
-                      help="高风险阈值：2.5")
+                       f"{'⚠️ 高风险' if risk_level == 'high' else '✅ 低风险'}",
+                       help="高风险阈值：2.5")
 
         # ======================
         # 关系网络可视化
@@ -349,7 +357,7 @@ def main():
         with st.expander("🕸️ 展开合作关系网络", expanded=True):
             def build_network_graph(author):
                 G = nx.Graph()
-                G.add_node(author, size=20, color='red')
+                G.add_node(author, size = 20, color='red')
 
                 # 查找关联节点
                 related = papers[
@@ -359,9 +367,9 @@ def main():
 
                 for person in related:
                     if person!= author:
-                        G.add_node(person, size=15, color='blue')
+                        G.add_node(person, size = 15, color='blue')
                         G.add_edge(author, person,
-                                  title=f"共同研究方向: {papers[papers['姓名'] == person]['研究方向'].iloc[0]}")
+                                   title=f"共同研究方向: {papers[papers['姓名'] == person]['研究方向'].iloc[0]}")
 
                 # Plotly可视化
                 pos = nx.spring_layout(G)
@@ -378,12 +386,12 @@ def main():
                 fig = go.Figure(
                     data=[
                         go.Scatter(
-                            x=edge_x, y=edge_y,
-                            line=dict(width=0.5, color='#888'),
+                            x = edge_x, y = edge_y,
+                            line=dict(width = 0.5, color='#888'),
                             hoverinfo='none',
                             mode='lines'),
                         go.Scatter(
-                            x=node_x, y=node_y,
+                            x = node_x, y = node_y,
                             mode='markers+text',
                             text=list(G.nodes()),
                             textposition="top center",
@@ -392,17 +400,18 @@ def main():
                                 colorscale='YlGnBu',
                                 size=[d['size'] for d in G.nodes.values()],
                                 color=[d['color'] for d in G.nodes.values()],
-                                line_width=2))
+                                line_width = 2))
                     ],
                     layout=go.Layout(
                         showlegend=False,
                         hovermode='closest',
-                        margin=dict(b=0, l=0, r=0, t=0),
+                        margin=dict(b = 0, l = 0, r = 0, t = 0),
                         xaxis=dict(showgrid=False, zeroline=False),
                         yaxis=dict(showgrid=False, zeroline=False))
                 )
                 st.plotly_chart(fig, use_container_width=True)
             build_network_graph(selected)
+
 
 
 if __name__ == "__main__":
