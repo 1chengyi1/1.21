@@ -281,13 +281,6 @@ def main():
                 risk_df.to_excel('risk_scores.xlsx', index=False)
             st.success("风险值更新完成！")
 
-        st.download_button(
-            label="📥 下载风险数据",
-            data=open('risk_scores.xlsx', 'rb').read() if 'risk_df' in globals() else b'',
-            file_name='科研风险数据.xlsx',
-            mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-        )
-
     # 尝试加载现有数据
     try:
         risk_df = pd.read_excel('risk_scores.xlsx')
