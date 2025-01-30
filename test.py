@@ -10,6 +10,11 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import roc_auc_score, average_precision_score
 import plotly.graph_objects as go
 
+# 设置随机种子
+random_seed = 42
+np.random.seed(random_seed)
+random.seed(random_seed)
+
 # ==========================
 # 数据预处理和风险值计算模块
 # ==========================
@@ -157,7 +162,6 @@ def process_risk_data():
         from collections import Counter
         node_freq = Counter([node for walk in walks for node in walk])
         node_to_idx = {node: idx for idx, node in enumerate(graph.nodes())}
-        idx_to_node = {idx: node for node, idx in node_to_idx.items()}
         embeddings = np.zeros((len(graph.nodes()), embedding_size))
         for i, node in enumerate(graph.nodes()):
             embeddings[i] = np.random.normal(size=embedding_size) / np.sqrt(node_freq[node])
@@ -188,8 +192,8 @@ def process_risk_data():
         # 训练分类器
         X = np.array(X)
         y = np.array(y)
-        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
-        clf = RandomForestClassifier(n_estimators=100)
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=random_seed)
+        clf = RandomForestClassifier(n_estimators=100, random_state=random_seed)
         clf.fit(X_train, y_train)
         
         # 计算节点风险值
