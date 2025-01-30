@@ -315,21 +315,17 @@ def main():
         # ======================
         # 信息展示
         # ======================
-        col1, col2 = st.columns(2)
+        st.subheader("📄 论文记录")
+        if not paper_records.empty:
+            st.dataframe(paper_records, use_container_width=True)
+        else:
+            st.info("暂无论文不端记录")
 
-        with col1:
-            st.subheader("📄 论文记录")
-            if not paper_records.empty:
-                st.dataframe(paper_records, use_container_width=True)
-            else:
-                st.info("暂无论文不端记录")
-
-        with col2:
-            st.subheader("📋 项目记录")
-            if not project_records.empty:
-                st.dataframe(project_records, use_container_width=True)
-            else:
-                st.info("暂无项目不端记录")
+        st.subheader("📋 项目记录")
+        if not project_records.empty:
+            st.dataframe(project_records, use_container_width=True)
+        else:
+            st.info("暂无项目不端记录")
 
         # 风险指标
         st.subheader("📊 风险分析")
