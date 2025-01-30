@@ -2,7 +2,6 @@ streamlit
 pandas
 networkx
 numpy
-scipy
 scikit-learn
 node2vec
 plotly
