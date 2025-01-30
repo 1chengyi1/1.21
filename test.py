@@ -269,8 +269,8 @@ def main():
     .high-risk { color: red; font-weight: bold; animation: blink 1s infinite; }
     @keyframes blink { 0% {opacity:1;} 50% {opacity:0;} 100% {opacity:1;} }
     .metric-box { padding: 20px; border-radius: 10px; background: #f0f2f6; margin: 10px; }
-    .full-width { width: 100%; }
-    .narrow-width { width: 60%; margin: 0 auto; }
+    .dataframe-container .dataframe { width: 100% !important; }
+    .dataframe-container .dataframe th, .dataframe-container .dataframe td { text-align: left !important; white-space: normal !important; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -317,13 +317,13 @@ def main():
             # ======================
             st.subheader(f"📄 论文记录 - {selected}")
             if not paper_records.empty:
-                st.dataframe(paper_records, use_container_width=True, height=400, width=800)
+                st.dataframe(paper_records, use_container_width=True, height=400)
             else:
                 st.info("暂无论文不端记录")
 
             st.subheader(f"📋 项目记录 - {selected}")
             if not project_records.empty:
-                st.dataframe(project_records, use_container_width=True, height=400, width=800)
+                st.dataframe(project_records, use_container_width=True, height=400)
             else:
                 st.info("暂无项目不端记录")
 
@@ -394,7 +394,7 @@ def main():
                             margin=dict(b=0, l=0, r=0, t=0),
                             xaxis=dict(showgrid=False, zeroline=False),
                             yaxis=dict(showgrid=False, zeroline=False),
-                            height=400, width=800)
+                            height=400)
                     )
                     st.plotly_chart(fig, use_container_width=True)
 
