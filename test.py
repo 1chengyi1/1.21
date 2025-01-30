@@ -1,3 +1,6 @@
+要去除下载风险数据这个按钮，只需要在 `main` 函数中删除与下载按钮相关的代码块即可。以下是修改后的代码：
+
+```python
 import streamlit as st
 import pandas as pd
 import networkx as nx
@@ -129,7 +132,7 @@ def process_risk_data():
         institution_map = papers.set_index('姓名')['研究机构'].to_dict()
         for a1 in institution_map:
             for a2 in institution_map:
-                if a1 != a2 and institution_map[a1] == institution_map[a2]:
+                if a1!= a2 and institution_map[a1] == institution_map[a2]:
                     G_authors.add_edge(a1, a2, weight=1)
 
         return G_authors
@@ -266,9 +269,9 @@ def main():
     # 自定义CSS样式
     st.markdown("""
     <style>
-    .high-risk { color: red; font-weight: bold; animation: blink 1s infinite; }
+  .high-risk { color: red; font-weight: bold; animation: blink 1s infinite; }
     @keyframes blink { 0% {opacity:1;} 50% {opacity:0;} 100% {opacity:1;} }
-    .metric-box { padding: 20px; border-radius: 10px; background: #f0f2f6; margin: 10px; }
+  .metric-box { padding: 20px; border-radius: 10px; background: #f0f2f6; margin: 10px; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -280,13 +283,6 @@ def main():
                 risk_df, papers, projects = process_risk_data()
                 risk_df.to_excel('risk_scores.xlsx', index=False)
             st.success("风险值更新完成！")
-
-        st.download_button(
-            label="📥 下载风险数据",
-            data=open('risk_scores.xlsx', 'rb').read() if 'risk_df' in globals() else b'',
-            file_name='科研风险数据.xlsx',
-            mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-        )
 
     # 尝试加载现有数据
     try:
@@ -363,7 +359,7 @@ def main():
                 ]['姓名'].unique()
 
                 for person in related:
-                    if person != author:
+                    if person!= author:
                         G.add_node(person, size=15, color='blue')
                         G.add_edge(author, person,
                                   title=f"共同研究方向: {papers[papers['姓名'] == person]['研究方向'].iloc[0]}")
@@ -407,7 +403,6 @@ def main():
                         yaxis=dict(showgrid=False, zeroline=False))
                 )
                 st.plotly_chart(fig, use_container_width=True)
-
             build_network_graph(selected)
 
 
