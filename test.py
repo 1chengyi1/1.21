@@ -14,6 +14,13 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import Dataset, DataLoader
 
+# 设置页面配置
+st.set_page_config(
+    page_title="科研诚信分析平台",
+    page_icon="🔬",
+    layout="wide"
+)
+
 # 定义闪烁效果的 CSS
 blink_css = """
 <style>
@@ -314,7 +321,7 @@ def main():
     @keyframes blink { 0% {opacity:1;} 50% {opacity:0;} 100% {opacity:1;} }
     .metric-box { padding: 20px; border-radius: 10px; background: #f0f2f6; margin: 10px; }
     .dataframe-container .dataframe { width: 100% !important; }
-    .dataframe-container .dataframe th, .dataframe-container .dataframe td { text-align: left !important; white-space: normal !important; }
+    .dataframe-container .dataframe th, .dataframe-container .dataframe td { text-align: left !重要; white-space: normal !重要; }
     </style>
     """, unsafe_allow_html=True)
 
