@@ -9,3 +9,4 @@ openpyxl
 setuptools
 scipy
 gensim
+torch
