@@ -13,8 +13,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import Dataset, DataLoader
-import matplotlib.pyplot as plt
-import matplotlib.font_manager as fm
+
 # ==========================
 # 数据预处理和风险值计算模块
 # ==========================
@@ -373,7 +372,6 @@ def main():
         # 关系网络可视化
         # ======================
         with st.expander("🕸️ 展开合作关系网络", expanded=True):
-
             def build_network_graph(author):
                 G = nx.Graph()
                 G.add_node(author)
@@ -387,43 +385,51 @@ def main():
                 
                 for person in related:
                     if person != author:
-                        reason = ""
-                        if papers[(papers['姓名'] == author) & (papers['姓名'] == person) & (papers['研究机构'].notnull())].shape[0] > 0:
-                            reason = "Same institution"
-                        elif papers[(papers['姓名'] == author) & (papers['姓名'] == person) & (papers['研究方向'].notnull())].shape[0] > 0:
-                            reason = "Same research direction"
-                        elif papers[(papers['姓名'] == author) & (papers['姓名'] == person) & (papers['不端内容'].notnull())].shape[0] > 0:
-                            reason = "Same misconduct content"
                         G.add_node(person)
-                        G.add_edge(author, person, label=reason)
+                        G.add_edge(author, person, label=f"Connected to {person}")
                 
-                # 使用 matplotlib 绘制网络图
+                # 使用 plotly 绘制网络图
                 pos = nx.spring_layout(G, k=0.5)  # 布局算法，增加节点间距
                 
-                plt.figure(figsize=(10, 8))  # 设置图形大小
+                edge_trace = []
+                for edge in G.edges(data=True):
+                    x0, y0 = pos[edge[0]]
+                    x1, y1 = pos[edge[1]]
+                    edge_trace.append(go.Scatter(
+                        x=[x0, x1, None], y=[y0, y1, None],
+                        line=dict(width=0.5, color='#888'),
+                        hoverinfo='text',
+                        mode='lines',
+                        text=edge[2]['label'],  # 边的标签
+                        hovertext=edge[2]['label']  # 鼠标悬停时显示的文本
+                    ))
                 
-                # 指定中文字体
-                font_path = fm.findfont(fm.FontProperties(family='SimHei'))  # 查找黑体字体
-                font_prop = fm.FontProperties(fname=font_path)
+                node_trace = go.Scatter(
+                    x=[], y=[], text=[], mode='markers+text', hoverinfo='text',
+                    marker=dict(
+                        showscale=True,
+                        colorscale='YlGnBu',
+                        size=10,
+                    )
+                )
+                for node in G.nodes():
+                    x, y = pos[node]
+                    node_trace['x'] += tuple([x])
+                    node_trace['y'] += tuple([y])
+                    node_trace['text'] += tuple([node])
                 
-                # 绘制节点
-                nx.draw_networkx_nodes(G, pos, node_size=500, node_color='lightblue')
-                
-                # 绘制边
-                nx.draw_networkx_edges(G, pos, width=1, edge_color='gray')
-                
-                # 绘制节点标签
-                nx.draw_networkx_labels(G, pos, font_size=10, font_color='black', font_family=font_prop.get_name())
-                
-                # 绘制边的标签
-                edge_labels = nx.get_edge_attributes(G, 'label')
-                nx.draw_networkx_edge_labels(G, pos, edge_labels=edge_labels, font_size=8, font_color='red', font_family=font_prop.get_name())
-                
-                plt.title('合作关系网络图', fontproperties=font_prop)
-                plt.axis('off')  # 关闭坐标轴
-                
-                # 在 Streamlit 中显示图形
-                st.pyplot(plt)
+                fig = go.Figure(
+                    data=edge_trace + [node_trace],
+                    layout=go.Layout(
+                        title='<br>合作关系网络图',
+                        showlegend=False,
+                        hovermode='closest',
+                        margin=dict(b=20, l=5, r=5, t=40),
+                        xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
+                        yaxis=dict(showgrid=False, zeroline=False, showticklabels=False)
+                    )
+                )
+                st.plotly_chart(fig, use_container_width=True)
         
             build_network_graph(selected)
 
