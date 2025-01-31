@@ -384,7 +384,7 @@ def main():
                 ]['姓名'].unique()
                 
                 for person in related:
-                    if person != author:
+                    if person!= author:
                         G.add_node(person)
                         G.add_edge(author, person, label=f"Connected to {person}")
                 
@@ -417,7 +417,8 @@ def main():
                     node_trace['x'] += tuple([x])
                     node_trace['y'] += tuple([y])
                     node_trace['text'] += tuple([node])
-                
+                    node_trace['hovertext'] += tuple([node])  # 添加节点的悬停文本
+            
                 fig = go.Figure(
                     data=edge_trace + [node_trace],
                     layout=go.Layout(
