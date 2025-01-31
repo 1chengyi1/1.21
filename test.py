@@ -1,7 +1,4 @@
-1. **修改`main`函数**：
-   - 在`main`函数中，当获取到`auc_roc`和`auc_pr`指标后，将其展示在页面上。
-   - 以下是修改后的完整代码：
-```python
+
 import streamlit as st
 import pandas as pd
 import networkx as nx
