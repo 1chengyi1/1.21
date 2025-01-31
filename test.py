@@ -386,7 +386,9 @@ def main():
                 for person in related:
                     if person!= author:
                         G.add_node(person)
-                        G.add_edge(author, person, label=f"Connected to {person}")
+                        # 相连的原因
+                        connection_reason = f"Connected to {person}"
+                        G.add_edge(author, person, label=connection_reason)
                 
                 # 使用 plotly 绘制网络图
                 pos = nx.spring_layout(G, k=0.5)  # 布局算法，增加节点间距
@@ -414,7 +416,7 @@ def main():
                             y=mid_y,
                             xref='x',
                             yref='y',
-                            text=edge[2]['label'],
+                            text=edge[2]['label'],  # 相连的原因作为标注文字
                             showarrow=False,
                             font=dict(size=10, color='black')
                         )
