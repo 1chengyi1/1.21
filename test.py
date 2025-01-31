@@ -375,14 +375,14 @@ def main():
             def build_network_graph(author):
                 G = nx.Graph()
                 G.add_node(author)
-            
+                
                 # 查找与查询作者有共同研究机构、研究方向或不端内容的作者
                 related = papers[
                     (papers['研究机构'] == papers[papers['姓名'] == author]['研究机构'].iloc[0]) |
                     (papers['研究方向'] == papers[papers['姓名'] == author]['研究方向'].iloc[0]) |
                     (papers['不端内容'] == papers[papers['姓名'] == author]['不端内容'].iloc[0])
                 ]['姓名'].unique()
-            
+                
                 for person in related:
                     if person != author:
                         G.add_node(person)
@@ -396,7 +396,7 @@ def main():
                             edge_label.append(f"不端内容: {papers[papers['姓名'] == author]['不端内容'].iloc[0]}")
                         edge_label = "\n".join(edge_label)
                         G.add_edge(author, person, label=edge_label)
-            
+                
                 # 使用 plotly 绘制网络图
                 pos = nx.spring_layout(G, k=0.5)  # 布局算法，增加节点间距
                 edge_trace = []
@@ -422,20 +422,13 @@ def main():
                         textfont=dict(size=12, color='black'),  # 调整字体大小
                         hoverinfo='none'
                     ))
-            
+                
                 node_trace = go.Scatter(
                     x=[], y=[], text=[], mode='markers+text', hoverinfo='text',
                     marker=dict(
                         showscale=True,
                         colorscale='YlGnBu',
                         size=10,
-                        # 去掉 colorbar 的设置
-                        # colorbar=dict(
-                        #     thickness=15,
-                        #     title='Node Connections',
-                        #     xanchor='left',
-                        #     titleside='right'
-                        # )
                     )
                 )
                 for node in G.nodes():
@@ -443,17 +436,19 @@ def main():
                     node_trace['x'] += tuple([x])
                     node_trace['y'] += tuple([y])
                     node_trace['text'] += tuple([node])
-            
-                fig = go.Figure(data=edge_trace + [node_trace] + edge_labels,
-                                layout=go.Layout(
-                                    title='<br>合作关系网络图',
-                                    titlefont_size=16,
-                                    showlegend=False,
-                                    hovermode='closest',
-                                    margin=dict(b=20, l=5, r=5, t=40),
-                                    xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
-                                    yaxis=dict(showgrid=False, zeroline=False, showticklabels=False)
-                                ))
+                
+                fig = go.Figure(
+                    data=edge_trace + [node_trace] + edge_labels,
+                    layout=go.Layout(
+                        title='<br>合作关系网络图',
+                        titlefont=dict(size=16),  # 修改为 titlefont 参数
+                        showlegend=False,
+                        hovermode='closest',
+                        margin=dict(b=20, l=5, r=5, t=40),
+                        xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
+                        yaxis=dict(showgrid=False, zeroline=False, showticklabels=False)
+                    )
+                )
                 st.plotly_chart(fig, use_container_width=True)
         
             build_network_graph(selected)
