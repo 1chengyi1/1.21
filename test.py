@@ -1,4 +1,3 @@
-
 import streamlit as st
 import pandas as pd
 import networkx as nx
@@ -14,7 +13,6 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import Dataset, DataLoader
-
 
 # ==========================
 # 数据预处理和风险值计算模块
@@ -85,21 +83,21 @@ def process_risk_data():
     # 网络构建函数
     # ======================
     def build_networks(papers, projects):
-        # 作者 - 论文网络
+        # 作者-论文网络
         G_papers = nx.Graph()
         for _, row in papers.iterrows():
             authors = [row['姓名']]
             weight = misconduct_weights.get(row['不端原因'], 1)
             G_papers.add_edge(row['姓名'], row['不端内容'], weight=weight)
 
-        # 作者 - 项目网络
+        # 作者-项目网络
         G_projects = nx.Graph()
         for _, row in projects.iterrows():
             authors = [row['姓名']]
             weight = misconduct_weights.get(row['不端原因'], 1)
             G_projects.add_edge(row['姓名'], row['不端内容'], weight=weight)
 
-        # 作者 - 作者网络
+        # 作者-作者网络
         G_authors = nx.Graph()
 
         # 共同项目/论文连接
@@ -137,7 +135,7 @@ def process_risk_data():
         return G_authors
 
     # ======================
-    # Word2Vec（Skip - gram）模型定义
+    # Word2Vec（Skip-gram）模型定义
     # ======================
     class SkipGramModel(nn.Module):
         def __init__(self, vocab_size, embedding_size):
@@ -163,7 +161,7 @@ def process_risk_data():
 
         def __getitem__(self, idx):
             walk = self.walks[idx]
-            input_ids = [self.node2id[node] for node in walk[: - 1]]
+            input_ids = [self.node2id[node] for node in walk[:-1]]
             target_ids = [self.node2id[node] for node in walk[1:]]
             return torch.tensor(input_ids), torch.tensor(target_ids)
 
@@ -221,47 +219,49 @@ def process_risk_data():
     # ======================
     # 执行计算流程
     # ======================
+    
     with st.spinner('正在构建合作网络...'):
         G_authors = build_networks(papers_df, projects_df)
-
+    
     with st.spinner('正在训练DeepWalk模型...'):
         embeddings = deepwalk(G_authors)
-
+    
     with st.spinner('正在计算风险指标...'):
         # 构建分类数据集
         X, y = [], []
         for edge in G_authors.edges():
             X.append(np.concatenate([embeddings[edge[0]], embeddings[edge[1]]]))
             y.append(1)
-
+    
         non_edges = list(nx.non_edges(G_authors))
         non_edges = random.sample(non_edges, len(y))
         for edge in non_edges:
             X.append(np.concatenate([embeddings[edge[0]], embeddings[edge[1]]]))
             y.append(0)
-
+    
         # 训练分类器
         X = np.array(X)
         y = np.array(y)
         X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
         clf = RandomForestClassifier(n_estimators=100)
         clf.fit(X_train, y_train)
-
-        # 预测测试集
-        y_pred_proba = clf.predict_proba(X_test)[:, 1]
-
-        # 计算AUC - ROC和AUC - PR
-        auc_roc = roc_auc_score(y_test, y_pred_proba)
-        auc_pr = average_precision_score(y_test, y_pred_proba)
-
+    
         # 计算节点风险值
         risk_scores = {node: np.linalg.norm(emb) for node, emb in embeddings.items()}
-
+    
+        # 模型性能评估
+        y_pred_proba = clf.predict_proba(X_test)[:, 1]
+        auc_roc = roc_auc_score(y_test, y_pred_proba)
+        auc_pr = average_precision_score(y_test, y_pred_proba)
+    
+        st.write(f"模型性能评估结果：")
+        st.write(f"AUC-ROC: {auc_roc:.4f}")
+        st.write(f"AUC-PR: {auc_pr:.4f}")
+    
     return pd.DataFrame({
         '作者': list(risk_scores.keys()),
         '风险值': list(risk_scores.values())
-    }), papers_df, projects_df, auc_roc, auc_pr
-
+    }), papers_df, projects_df
 
 # ==========================
 # 可视化界面模块
@@ -285,12 +285,12 @@ def main():
     table td {
         white - space: normal;
     }
-.stDataFrame tbody tr {
+ .stDataFrame tbody tr {
         display: block;
         overflow - y: auto;
         height: 200px;
     }
-.stDataFrame tbody {
+ .stDataFrame tbody {
         display: block;
     }
     </style>
@@ -301,24 +301,19 @@ def main():
         st.title("控制面板")
         if st.button("🔄 重新计算风险值", help="当原始数据更新后点击此按钮"):
             with st.spinner("重新计算中..."):
-                risk_df, papers, projects, auc_roc, auc_pr = process_risk_data()
-                risk_df.to_excel('risk_scores.xlsx', index=False)
+                risk_df, papers, projects = process_risk_data()
+                risk_df.to_excel('risk_scores.xlsx', index = False)
             st.success("风险值更新完成！")
-            st.write(f"AUC - ROC: {auc_roc:.4f}")
-            st.write(f"AUC - PR: {auc_pr:.4f}")
 
     # 尝试加载现有数据
     try:
         risk_df = pd.read_excel('risk_scores.xlsx')
         papers = pd.read_excel('data3.xlsx', sheet_name='论文')
         projects = pd.read_excel('data3.xlsx', sheet_name='项目')
-        auc_roc, auc_pr = None, None
     except:
         with st.spinner("首次运行需要初始化数据..."):
-            risk_df, papers, projects, auc_roc, auc_pr = process_risk_data()
-            risk_df.to_excel('risk_scores.xlsx', index=False)
-        st.write(f"AUC - ROC: {auc_roc:.4f}")
-        st.write(f"AUC - PR: {auc_pr:.4f}")
+            risk_df, papers, projects = process_risk_data()
+            risk_df.to_excel('risk_scores.xlsx', index = False)
 
     # 主界面
     st.title("🔍 科研人员信用风险分析系统")
@@ -350,7 +345,7 @@ def main():
             st.markdown(
                 """
                 <style>
-              .scrollable-table {
+                .scrollable-table {
                     max-height: 300px;  /* 设置最大高度 */
                     overflow-y: auto;   /* 添加竖向滚动条 */
                     display: block;
@@ -359,14 +354,14 @@ def main():
                 """,
                 unsafe_allow_html=True
             )
-            # 将DataFrame转换为HTML，并添加滚动条样式
+            # 将 DataFrame 转换为 HTML，并添加滚动条样式
             st.markdown(
                 f'<div class="scrollable-table">{paper_records.to_html(escape=False, index=False)}</div>',
                 unsafe_allow_html=True
             )
         else:
             st.info("暂无论文不端记录")
-
+        
         st.subheader("📋 项目记录")
         if not project_records.empty:
             st.markdown(project_records.to_html(escape=False), unsafe_allow_html=True)
@@ -390,15 +385,15 @@ def main():
             def build_network_graph(author):
                 G = nx.Graph()
                 G.add_node(author)
-
+                
                 # 查找与查询作者有共同研究机构、研究方向或不端内容的作者
                 related = papers[
                     (papers['研究机构'] == papers[papers['姓名'] == author]['研究机构'].iloc[0]) |
                     (papers['研究方向'] == papers[papers['姓名'] == author]['研究方向'].iloc[0]) |
                     (papers['不端内容'] == papers[papers['姓名'] == author]['不端内容'].iloc[0])
                 ]['姓名'].unique()
-
-                for person in  related:
+                
+                for person in related:
                     if person != author:
                         reason = ''
                         if papers[(papers['姓名'] == author) & (papers['研究机构'] == papers[papers['姓名'] == person]['研究机构'].iloc[0])].shape[0] > 0:
@@ -409,8 +404,8 @@ def main():
                             reason = '不端内容相关'
                         G.add_node(person)
                         G.add_edge(author, person, label=reason)
-
-                # 使用plotly绘制网络图
+                
+                # 使用 plotly 绘制网络图
                 pos = nx.spring_layout(G, k=0.5)  # 布局
                 edge_trace = []
                 edge_annotations = []  # 用于存储边的标注信息
@@ -423,7 +418,7 @@ def main():
                         hoverinfo='text',
                         mode='lines'
                     ))
-
+                    
                     # 计算边的中点位置，用于放置标注文字
                     mid_x = (x0 + x1) / 2
                     mid_y = (y0 + y1) / 2
@@ -438,7 +433,7 @@ def main():
                             font=dict(size=10, color='black')
                         )
                     )
-
+                
                 node_trace = go.Scatter(
                     x=[], y=[], text=[], mode='markers+text', hoverinfo='text',
                     marker=dict(
@@ -452,7 +447,7 @@ def main():
                     node_trace['x'] += tuple([x])
                     node_trace['y'] += tuple([y])
                     node_trace['text'] += tuple([node])
-
+                
                 fig = go.Figure(
                     data=edge_trace + [node_trace],
                     layout=go.Layout(
@@ -466,7 +461,7 @@ def main():
                     )
                 )
                 st.plotly_chart(fig, use_container_width=True)
-
+        
             build_network_graph(selected)
 
 
