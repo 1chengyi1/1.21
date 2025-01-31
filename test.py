@@ -410,7 +410,8 @@ def main():
                         showscale=True,
                         colorscale='YlGnBu',
                         size=10,
-                    )
+                    ),
+                    hovertext=[]  # 初始化 hovertext 属性
                 )
                 for node in G.nodes():
                     x, y = pos[node]
