@@ -375,14 +375,14 @@ def main():
             def build_network_graph(author):
                 G = nx.Graph()
                 G.add_node(author)
-        
+            
                 # 查找与查询作者有共同研究机构、研究方向或不端内容的作者
                 related = papers[
                     (papers['研究机构'] == papers[papers['姓名'] == author]['研究机构'].iloc[0]) |
                     (papers['研究方向'] == papers[papers['姓名'] == author]['研究方向'].iloc[0]) |
                     (papers['不端内容'] == papers[papers['姓名'] == author]['不端内容'].iloc[0])
                 ]['姓名'].unique()
-        
+            
                 for person in related:
                     if person != author:
                         G.add_node(person)
@@ -396,7 +396,7 @@ def main():
                             edge_label.append(f"不端内容: {papers[papers['姓名'] == author]['不端内容'].iloc[0]}")
                         edge_label = "\n".join(edge_label)
                         G.add_edge(author, person, label=edge_label)
-        
+            
                 # 使用 plotly 绘制网络图
                 pos = nx.spring_layout(G, k=0.5)  # 布局算法，增加节点间距
                 edge_trace = []
@@ -422,13 +422,16 @@ def main():
                         textfont=dict(size=12, color='black'),  # 调整字体大小
                         hoverinfo='none'
                     ))
-        
+            
+                # 为节点设置颜色，这里使用节点的度作为颜色映射
+                node_degrees = list(dict(G.degree()).values())
                 node_trace = go.Scatter(
                     x=[], y=[], text=[], mode='markers+text', hoverinfo='text',
                     marker=dict(
                         showscale=True,
                         colorscale='YlGnBu',
                         size=10,
+                        color=node_degrees,  # 设置节点颜色
                         colorbar=dict(
                             thickness=15,
                             title='Node Connections',
@@ -442,7 +445,7 @@ def main():
                     node_trace['x'] += tuple([x])
                     node_trace['y'] += tuple([y])
                     node_trace['text'] += tuple([node])
-        
+            
                 fig = go.Figure(data=edge_trace + [node_trace] + edge_labels,
                                 layout=go.Layout(
                                     title='<br>合作关系网络图',
