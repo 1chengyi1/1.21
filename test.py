@@ -386,21 +386,12 @@ def main():
                 for person in related:
                     if person != author:
                         G.add_node(person)
-                        # 确定边的标签（相连的原因）
-                        edge_label = []
-                        if papers[papers['姓名'] == person]['研究机构'].iloc[0] == papers[papers['姓名'] == author]['研究机构'].iloc[0]:
-                            edge_label.append(f"研究机构: {papers[papers['姓名'] == author]['研究机构'].iloc[0]}")
-                        if papers[papers['姓名'] == person]['研究方向'].iloc[0] == papers[papers['姓名'] == author]['研究方向'].iloc[0]:
-                            edge_label.append(f"研究方向: {papers[papers['姓名'] == author]['研究方向'].iloc[0]}")
-                        if papers[papers['姓名'] == person]['不端内容'].iloc[0] == papers[papers['姓名'] == author]['不端内容'].iloc[0]:
-                            edge_label.append(f"不端内容: {papers[papers['姓名'] == author]['不端内容'].iloc[0]}")
-                        edge_label = "\n".join(edge_label)
-                        G.add_edge(author, person, label=edge_label)
+                        G.add_edge(author, person, label=f"Connected to {person}")
                 
                 # 使用 plotly 绘制网络图
                 pos = nx.spring_layout(G, k=0.5)  # 布局算法，增加节点间距
+                
                 edge_trace = []
-                edge_labels = []
                 for edge in G.edges(data=True):
                     x0, y0 = pos[edge[0]]
                     x1, y1 = pos[edge[1]]
@@ -411,16 +402,6 @@ def main():
                         mode='lines',
                         text=edge[2]['label'],  # 边的标签
                         hovertext=edge[2]['label']  # 鼠标悬停时显示的文本
-                    ))
-                    # 计算边的中点位置，用于显示标签
-                    edge_labels.append(go.Scatter(
-                        x=[(x0 + x1) / 2],  # 边的中点
-                        y=[(y0 + y1) / 2],
-                        mode='text',
-                        text=[edge[2]['label']],  # 边的标签
-                        textposition='middle center',  # 标签位置
-                        textfont=dict(size=12, color='black'),  # 调整字体大小
-                        hoverinfo='none'
                     ))
                 
                 node_trace = go.Scatter(
@@ -438,10 +419,9 @@ def main():
                     node_trace['text'] += tuple([node])
                 
                 fig = go.Figure(
-                    data=edge_trace + [node_trace] + edge_labels,
+                    data=edge_trace + [node_trace],
                     layout=go.Layout(
                         title='<br>合作关系网络图',
-                        titlefont=dict(size=16),  # 修改为 titlefont 参数
                         showlegend=False,
                         hovermode='closest',
                         margin=dict(b=20, l=5, r=5, t=40),
