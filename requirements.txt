@@ -10,3 +10,4 @@ setuptools
 scipy
 gensim
 torch
+matplotlib
