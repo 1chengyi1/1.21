@@ -372,7 +372,7 @@ def main():
         # 关系网络可视化
         # ======================
         with st.expander("🕸️ 展开合作关系网络", expanded=True):
-            def build_network_graph(author):
+           def build_network_graph(author):
                 G = nx.Graph()
                 G.add_node(author)
                 
@@ -386,11 +386,21 @@ def main():
                 for person in related:
                     if person != author:
                         G.add_node(person)
-                        G.add_edge(author, person, label=f"Connected to {person}")
+                        # 确定边的标签（相连的原因）
+                        edge_label = []
+                        if papers[papers['姓名'] == person]['研究机构'].iloc[0] == papers[papers['姓名'] == author]['研究机构'].iloc[0]:
+                            edge_label.append(f"研究机构: {papers[papers['姓名'] == author]['研究机构'].iloc[0]}")
+                        if papers[papers['姓名'] == person]['研究方向'].iloc[0] == papers[papers['姓名'] == author]['研究方向'].iloc[0]:
+                            edge_label.append(f"研究方向: {papers[papers['姓名'] == author]['研究方向'].iloc[0]}")
+                        if papers[papers['姓名'] == person]['不端内容'].iloc[0] == papers[papers['姓名'] == author]['不端内容'].iloc[0]:
+                            edge_label.append(f"不端内容: {papers[papers['姓名'] == author]['不端内容'].iloc[0]}")
+                        edge_label = "\n".join(edge_label)
+                        G.add_edge(author, person, label=edge_label)
                 
                 # 使用 plotly 绘制网络图
                 pos = nx.spring_layout(G, k=0.5)  # 布局算法，增加节点间距
                 
+                # 边的轨迹
                 edge_trace = []
                 for edge in G.edges(data=True):
                     x0, y0 = pos[edge[0]]
@@ -404,6 +414,22 @@ def main():
                         hovertext=edge[2]['label']  # 鼠标悬停时显示的文本
                     ))
                 
+                # 边的标签
+                edge_labels = []
+                for edge in G.edges(data=True):
+                    x0, y0 = pos[edge[0]]
+                    x1, y1 = pos[edge[1]]
+                    edge_labels.append(go.Scatter(
+                        x=[(x0 + x1) / 2],  # 边的中点
+                        y=[(y0 + y1) / 2],
+                        mode='text',
+                        text=[edge[2]['label']],  # 边的标签
+                        textposition='middle center',  # 标签位置
+                        textfont=dict(size=12, color='black'),  # 调整字体大小
+                        hoverinfo='none'
+                    ))
+                
+                # 节点的轨迹
                 node_trace = go.Scatter(
                     x=[], y=[], text=[], mode='markers+text', hoverinfo='text',
                     marker=dict(
@@ -418,10 +444,12 @@ def main():
                     node_trace['y'] += tuple([y])
                     node_trace['text'] += tuple([node])
                 
+                # 创建图表
                 fig = go.Figure(
-                    data=edge_trace + [node_trace],
+                    data=edge_trace + [node_trace] + edge_labels,  # 将 edge_labels 添加到 data 中
                     layout=go.Layout(
                         title='<br>合作关系网络图',
+                        titlefont=dict(size=16),
                         showlegend=False,
                         hovermode='closest',
                         margin=dict(b=20, l=5, r=5, t=40),
@@ -430,7 +458,6 @@ def main():
                     )
                 )
                 st.plotly_chart(fig, use_container_width=True)
-        
             build_network_graph(selected)
 
 
