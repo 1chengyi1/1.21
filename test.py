@@ -123,14 +123,14 @@ def process_risk_data():
                 if similarity_matrix[i, j] > 0.7:
                     a1 = research_areas.iloc[i]['姓名']
                     a2 = research_areas.iloc[j]['姓名']
-                    G_authors.add_edge(a1, a2, weight=similarity_matrix[i, j])
+                    G_authors.add_edge(a1, a2, weight=similarity_matrix[i, j], reason='研究方向相似')
 
         # 共同机构连接
         institution_map = papers.set_index('姓名')['研究机构'].to_dict()
         for a1 in institution_map:
             for a2 in institution_map:
                 if a1!= a2 and institution_map[a1] == institution_map[a2]:
-                    G_authors.add_edge(a1, a2, weight=1)
+                    G_authors.add_edge(a1, a2, weight=1, reason='研究机构相同')
 
         return G_authors
 
@@ -384,15 +384,19 @@ def main():
                 ]['姓名'].unique()
                 
                 for person in related:
-                    if person!= author:
+                    if person != author:
+                        reason = ''
+                        if papers[(papers['姓名'] == author) & (papers['研究机构'] == papers[papers['姓名'] == person]['研究机构'].iloc[0])].shape[0] > 0:
+                            reason = '研究机构相同'
+                        elif papers[(papers['姓名'] == author) & (papers['研究方向'] == papers[papers['姓名'] == person]['研究方向'].iloc[0])].shape[0] > 0:
+                            reason = '研究方向相似'
+                        else:
+                            reason = '不端内容相关'
                         G.add_node(person)
-                        # 相连的原因
-                        connection_reason = f"Connected to {person}"
-                        G.add_edge(author, person, label=connection_reason)
+                        G.add_edge(author, person, label=reason)
                 
                 # 使用 plotly 绘制网络图
-                pos = nx.spring_layout(G, k=0.5)  # 布局算法，增加节点间距
-                
+                pos = nx.spring_layout(G, k=0.5)  # 布局
                 edge_trace = []
                 edge_annotations = []  # 用于存储边的标注信息
                 for edge in G.edges(data=True):
@@ -402,9 +406,7 @@ def main():
                         x=[x0, x1, None], y=[y0, y1, None],
                         line=dict(width=0.5, color='#888'),
                         hoverinfo='text',
-                        mode='lines',
-                        text=edge[2]['label'],  # 边的标签
-                        hovertext=edge[2]['label']  # 鼠标悬停时显示的文本
+                        mode='lines'
                     ))
                     
                     # 计算边的中点位置，用于放置标注文字
@@ -428,16 +430,14 @@ def main():
                         showscale=True,
                         colorscale='YlGnBu',
                         size=10,
-                    ),
-                    hovertext=[]  # 初始化 hovertext 属性
+                    )
                 )
                 for node in G.nodes():
                     x, y = pos[node]
                     node_trace['x'] += tuple([x])
                     node_trace['y'] += tuple([y])
                     node_trace['text'] += tuple([node])
-                    node_trace['hovertext'] += tuple([node])  # 添加节点的悬停文本
-            
+                
                 fig = go.Figure(
                     data=edge_trace + [node_trace],
                     layout=go.Layout(
