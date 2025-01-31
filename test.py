@@ -129,7 +129,7 @@ def process_risk_data():
         institution_map = papers.set_index('姓名')['研究机构'].to_dict()
         for a1 in institution_map:
             for a2 in institution_map:
-                if a1 != a2 and institution_map[a1] == institution_map[a2]:
+                if a1!= a2 and institution_map[a1] == institution_map[a2]:
                     G_authors.add_edge(a1, a2, weight=1)
 
         return G_authors
@@ -292,7 +292,7 @@ def main():
         if st.button("🔄 重新计算风险值", help="当原始数据更新后点击此按钮"):
             with st.spinner("重新计算中..."):
                 risk_df, papers, projects = process_risk_data()
-                risk_df.to_excel('risk_scores.xlsx', index=False)
+                risk_df.to_excel('risk_scores.xlsx', index = False)
             st.success("风险值更新完成！")
 
     # 尝试加载现有数据
@@ -303,7 +303,7 @@ def main():
     except:
         with st.spinner("首次运行需要初始化数据..."):
             risk_df, papers, projects = process_risk_data()
-            risk_df.to_excel('risk_scores.xlsx', index=False)
+            risk_df.to_excel('risk_scores.xlsx', index = False)
 
     # 主界面
     st.title("🔍 科研人员信用风险分析系统")
@@ -351,7 +351,7 @@ def main():
             )
         else:
             st.info("暂无论文不端记录")
-
+        
         st.subheader("📋 项目记录")
         if not project_records.empty:
             st.markdown(project_records.to_html(escape=False), unsafe_allow_html=True)
@@ -375,14 +375,14 @@ def main():
             def build_network_graph(author):
                 G = nx.Graph()
                 G.add_node(author)
-
+        
                 # 查找与查询作者有共同研究机构、研究方向或不端内容的作者
                 related = papers[
                     (papers['研究机构'] == papers[papers['姓名'] == author]['研究机构'].iloc[0]) |
                     (papers['研究方向'] == papers[papers['姓名'] == author]['研究方向'].iloc[0]) |
                     (papers['不端内容'] == papers[papers['姓名'] == author]['不端内容'].iloc[0])
                 ]['姓名'].unique()
-
+        
                 for person in related:
                     if person != author:
                         G.add_node(person)
@@ -396,7 +396,7 @@ def main():
                             edge_label.append(f"不端内容: {papers[papers['姓名'] == author]['不端内容'].iloc[0]}")
                         edge_label = "\n".join(edge_label)
                         G.add_edge(author, person, label=edge_label)
-
+        
                 # 使用 plotly 绘制网络图
                 pos = nx.spring_layout(G, k=0.5)  # 布局算法，增加节点间距
                 edge_trace = []
@@ -422,19 +422,18 @@ def main():
                         textfont=dict(size=12, color='black'),  # 调整字体大小
                         hoverinfo='none'
                     ))
-
-                # 为节点设置颜色，这里使用节点的度作为颜色映射
-                node_degrees = list(dict(G.degree()).values())
+        
                 node_trace = go.Scatter(
                     x=[], y=[], text=[], mode='markers+text', hoverinfo='text',
                     marker=dict(
                         showscale=True,
                         colorscale='YlGnBu',
                         size=10,
-                        color=node_degrees,  # 设置节点颜色
                         colorbar=dict(
                             thickness=15,
-                            title='Node Connections'
+                            title='Node Connections',
+                            xanchor='left',
+                            titleside='right'
                         )
                     )
                 )
@@ -443,7 +442,7 @@ def main():
                     node_trace['x'] += tuple([x])
                     node_trace['y'] += tuple([y])
                     node_trace['text'] += tuple([node])
-
+        
                 fig = go.Figure(data=edge_trace + [node_trace] + edge_labels,
                                 layout=go.Layout(
                                     title='<br>合作关系网络图',
@@ -455,7 +454,7 @@ def main():
                                     yaxis=dict(showgrid=False, zeroline=False, showticklabels=False)
                                 ))
                 st.plotly_chart(fig, use_container_width=True)
-
+        
             build_network_graph(selected)
 
 
