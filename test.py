@@ -372,7 +372,7 @@ def main():
         # 关系网络可视化
         # ======================
         with st.expander("🕸️ 展开合作关系网络", expanded=True):
-           def build_network_graph(author):
+            def build_network_graph(author):
                 G = nx.Graph()
                 G.add_node(author)
             
@@ -443,9 +443,12 @@ def main():
                     x1, y1 = pos[edge[1]]
                     mid_x = (x0 + x1) / 2
                     mid_y = (y0 + y1) / 2
+                    # 稍微偏移注释位置
+                    offset_x = (y1 - y0) * 0.05
+                    offset_y = -(x1 - x0) * 0.05
                     fig.add_annotation(
-                        x=mid_x,
-                        y=mid_y,
+                        x=mid_x + offset_x,
+                        y=mid_y + offset_y,
                         text=edge[2]['label'],
                         showarrow=False,
                         font=dict(size=10)
@@ -453,7 +456,7 @@ def main():
             
                 st.plotly_chart(fig, use_container_width=True)
         
-           build_network_graph(selected)
+            build_network_graph(selected)
 
 
 if __name__ == "__main__":
