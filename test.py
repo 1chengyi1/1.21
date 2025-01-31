@@ -245,13 +245,20 @@ def process_risk_data():
         clf = RandomForestClassifier(n_estimators=100)
         clf.fit(X_train, y_train)
 
+        # 预测测试集
+        y_pred_proba = clf.predict_proba(X_test)[:, 1]
+
+        # 计算AUC-ROC和AUC-PR
+        auc_roc = roc_auc_score(y_test, y_pred_proba)
+        auc_pr = average_precision_score(y_test, y_pred_proba)
+
         # 计算节点风险值
         risk_scores = {node: np.linalg.norm(emb) for node, emb in embeddings.items()}
 
     return pd.DataFrame({
         '作者': list(risk_scores.keys()),
         '风险值': list(risk_scores.values())
-    }), papers_df, projects_df
+    }), papers_df, projects_df, auc_roc, auc_pr
 
 # ==========================
 # 可视化界面模块
@@ -275,12 +282,12 @@ def main():
     table td {
         white - space: normal;
     }
- .stDataFrame tbody tr {
+.stDataFrame tbody tr {
         display: block;
         overflow - y: auto;
         height: 200px;
     }
- .stDataFrame tbody {
+.stDataFrame tbody {
         display: block;
     }
     </style>
@@ -291,19 +298,24 @@ def main():
         st.title("控制面板")
         if st.button("🔄 重新计算风险值", help="当原始数据更新后点击此按钮"):
             with st.spinner("重新计算中..."):
-                risk_df, papers, projects = process_risk_data()
+                risk_df, papers, projects, auc_roc, auc_pr = process_risk_data()
                 risk_df.to_excel('risk_scores.xlsx', index = False)
             st.success("风险值更新完成！")
+            st.write(f"AUC-ROC: {auc_roc:.4f}")
+            st.write(f"AUC-PR: {auc_pr:.4f}")
 
     # 尝试加载现有数据
     try:
         risk_df = pd.read_excel('risk_scores.xlsx')
         papers = pd.read_excel('data3.xlsx', sheet_name='论文')
         projects = pd.read_excel('data3.xlsx', sheet_name='项目')
+        auc_roc, auc_pr = None, None
     except:
         with st.spinner("首次运行需要初始化数据..."):
-            risk_df, papers, projects = process_risk_data()
+            risk_df, papers, projects, auc_roc, auc_pr = process_risk_data()
             risk_df.to_excel('risk_scores.xlsx', index = False)
+        st.write(f"AUC-ROC: {auc_roc:.4f}")
+        st.write(f"AUC-PR: {auc_pr:.4f}")
 
     # 主界面
     st.title("🔍 科研人员信用风险分析系统")
@@ -335,7 +347,7 @@ def main():
             st.markdown(
                 """
                 <style>
-                .scrollable-table {
+               .scrollable-table {
                     max-height: 300px;  /* 设置最大高度 */
                     overflow-y: auto;   /* 添加竖向滚动条 */
                     display: block;
