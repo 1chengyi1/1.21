@@ -392,6 +392,7 @@ def main():
                 pos = nx.spring_layout(G, k=0.5)  # 布局算法，增加节点间距
                 
                 edge_trace = []
+                edge_annotations = []  # 用于存储边的标注信息
                 for edge in G.edges(data=True):
                     x0, y0 = pos[edge[0]]
                     x1, y1 = pos[edge[1]]
@@ -403,6 +404,21 @@ def main():
                         text=edge[2]['label'],  # 边的标签
                         hovertext=edge[2]['label']  # 鼠标悬停时显示的文本
                     ))
+                    
+                    # 计算边的中点位置，用于放置标注文字
+                    mid_x = (x0 + x1) / 2
+                    mid_y = (y0 + y1) / 2
+                    edge_annotations.append(
+                        dict(
+                            x=mid_x,
+                            y=mid_y,
+                            xref='x',
+                            yref='y',
+                            text=edge[2]['label'],
+                            showarrow=False,
+                            font=dict(size=10, color='black')
+                        )
+                    )
                 
                 node_trace = go.Scatter(
                     x=[], y=[], text=[], mode='markers+text', hoverinfo='text',
@@ -428,7 +444,8 @@ def main():
                         hovermode='closest',
                         margin=dict(b=20, l=5, r=5, t=40),
                         xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
-                        yaxis=dict(showgrid=False, zeroline=False, showticklabels=False)
+                        yaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
+                        annotations=edge_annotations  # 添加边的标注信息
                     )
                 )
                 st.plotly_chart(fig, use_container_width=True)
