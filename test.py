@@ -219,45 +219,35 @@ def process_risk_data():
     # ======================
     # 执行计算流程
     # ======================
-    
     with st.spinner('正在构建合作网络...'):
         G_authors = build_networks(papers_df, projects_df)
-    
+
     with st.spinner('正在训练DeepWalk模型...'):
         embeddings = deepwalk(G_authors)
-    
+
     with st.spinner('正在计算风险指标...'):
         # 构建分类数据集
         X, y = [], []
         for edge in G_authors.edges():
             X.append(np.concatenate([embeddings[edge[0]], embeddings[edge[1]]]))
             y.append(1)
-    
+
         non_edges = list(nx.non_edges(G_authors))
         non_edges = random.sample(non_edges, len(y))
         for edge in non_edges:
             X.append(np.concatenate([embeddings[edge[0]], embeddings[edge[1]]]))
             y.append(0)
-    
+
         # 训练分类器
         X = np.array(X)
         y = np.array(y)
         X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
         clf = RandomForestClassifier(n_estimators=100)
         clf.fit(X_train, y_train)
-    
+
         # 计算节点风险值
         risk_scores = {node: np.linalg.norm(emb) for node, emb in embeddings.items()}
-    
-        # 模型性能评估
-        y_pred_proba = clf.predict_proba(X_test)[:, 1]
-        auc_roc = roc_auc_score(y_test, y_pred_proba)
-        auc_pr = average_precision_score(y_test, y_pred_proba)
-    
-        st.write(f"模型性能评估结果：")
-        st.write(f"AUC-ROC: {auc_roc:.4f}")
-        st.write(f"AUC-PR: {auc_pr:.4f}")
-    
+
     return pd.DataFrame({
         '作者': list(risk_scores.keys()),
         '风险值': list(risk_scores.values())
