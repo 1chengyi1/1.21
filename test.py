@@ -375,14 +375,16 @@ def main():
             def build_network_graph(author):
                 G = nx.Graph()
                 G.add_node(author)
+                
                 # 查找与查询作者有共同研究机构、研究方向或不端内容的作者
                 related = papers[
                     (papers['研究机构'] == papers[papers['姓名'] == author]['研究机构'].iloc[0]) |
                     (papers['研究方向'] == papers[papers['姓名'] == author]['研究方向'].iloc[0]) |
                     (papers['不端内容'] == papers[papers['姓名'] == author]['不端内容'].iloc[0])
                 ]['姓名'].unique()
+                
                 for person in related:
-                    if person!= author:
+                    if person != author:
                         reason = ""
                         if papers[(papers['姓名'] == author) & (papers['姓名'] == person) & (papers['研究机构'].notnull())].shape[0] > 0:
                             reason = "Same institution"
@@ -392,8 +394,10 @@ def main():
                             reason = "Same misconduct content"
                         G.add_node(person)
                         G.add_edge(author, person, label=reason)
+                
                 # 使用 plotly 绘制网络图
                 pos = nx.spring_layout(G, k=0.5)  # 布局算法，增加节点间距
+                
                 edge_trace = []
                 for edge in G.edges(data=True):
                     x0, y0 = pos[edge[0]]
@@ -406,6 +410,7 @@ def main():
                         text=edge[2]['label'],  # 边的标签
                         hovertext=edge[2]['label']  # 鼠标悬停时显示的文本
                     ))
+                
                 node_trace = go.Scatter(
                     x=[], y=[], text=[], mode='markers+text', hoverinfo='text',
                     marker=dict(
@@ -419,18 +424,28 @@ def main():
                     node_trace['x'] += tuple([x])
                     node_trace['y'] += tuple([y])
                     node_trace['text'] += tuple([node])
-                # 在连线上显示相连原因
+                
+                # 创建一个空的 annotations 列表
+                annotations = []
+                
                 for edge in G.edges(data=True):
                     x0, y0 = pos[edge[0]]
                     x1, y1 = pos[edge[1]]
                     mid_x = (x0 + x1) / 2
                     mid_y = (y0 + y1) / 2
-                    edge_trace.append(go.Scatter(
-                        x=[mid_x], y=[mid_y],
-                        text=[edge[2]['label']],
-                        mode='text',
-                        textfont=dict(size=10)
-                    ))
+                    # 添加 annotation 到列表中
+                    annotations.append(
+                        dict(
+                            x=mid_x,
+                            y=mid_y,
+                            xref='x',
+                            yref='y',
+                            text=edge[2]['label'],
+                            showarrow=False,
+                            font=dict(size=10)
+                        )
+                    )
+                
                 fig = go.Figure(
                     data=edge_trace + [node_trace],
                     layout=go.Layout(
@@ -439,7 +454,8 @@ def main():
                         hovermode='closest',
                         margin=dict(b=20, l=5, r=5, t=40),
                         xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
-                        yaxis=dict(showgrid=False, zeroline=False, showticklabels=False)
+                        yaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
+                        annotations=annotations  # 将 annotations 列表添加到布局中
                     )
                 )
                 st.plotly_chart(fig, use_container_width=True)
