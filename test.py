@@ -331,10 +331,27 @@ def main():
         # ======================
         st.subheader("📄 论文记录")
         if not paper_records.empty:
-            st.markdown(paper_records.to_html(escape=False), unsafe_allow_html=True)
+            # 添加竖向滚动条
+            st.markdown(
+                """
+                <style>
+                .scrollable-table {
+                    max-height: 300px;  /* 设置最大高度 */
+                    overflow-y: auto;   /* 添加竖向滚动条 */
+                    display: block;
+                }
+                </style>
+                """,
+                unsafe_allow_html=True
+            )
+            # 将 DataFrame 转换为 HTML，并添加滚动条样式
+            st.markdown(
+                f'<div class="scrollable-table">{paper_records.to_html(escape=False, index=False)}</div>',
+                unsafe_allow_html=True
+            )
         else:
             st.info("暂无论文不端记录")
-
+        
         st.subheader("📋 项目记录")
         if not project_records.empty:
             st.markdown(project_records.to_html(escape=False), unsafe_allow_html=True)
