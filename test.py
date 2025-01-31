@@ -360,7 +360,7 @@ def main():
 
         # 风险指标
         st.subheader("📊 风险分析")
-        risk_level = "high" if author_risk > 2.5 else "low"
+        risk_level = "high" if author_risk > 12 else "low"
         cols = st.columns(4)
         cols[0].metric("信用评分", f"{author_risk:.2f}",
                        delta_color="inverse" if risk_level == "high" else "normal")
