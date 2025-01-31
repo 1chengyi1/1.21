@@ -366,7 +366,7 @@ def main():
                        delta_color="inverse" if risk_level == "high" else "normal")
         cols[1].metric("风险等级",
                        f"{'⚠️ 高风险' if risk_level == 'high' else '✅ 低风险'}",
-                       help="高风险阈值：2.5")
+                       help="高风险阈值：12")
 
         # ======================
         # 关系网络可视化
