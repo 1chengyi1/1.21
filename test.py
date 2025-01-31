@@ -14,6 +14,7 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import Dataset, DataLoader
 import matplotlib.pyplot as plt
+import matplotlib.font_manager as fm
 # ==========================
 # 数据预处理和风险值计算模块
 # ==========================
@@ -372,7 +373,7 @@ def main():
         # 关系网络可视化
         # ======================
         with st.expander("🕸️ 展开合作关系网络", expanded=True):
-            
+
             def build_network_graph(author):
                 G = nx.Graph()
                 G.add_node(author)
@@ -401,6 +402,10 @@ def main():
                 
                 plt.figure(figsize=(10, 8))  # 设置图形大小
                 
+                # 指定中文字体
+                font_path = fm.findfont(fm.FontProperties(family='SimHei'))  # 查找黑体字体
+                font_prop = fm.FontProperties(fname=font_path)
+                
                 # 绘制节点
                 nx.draw_networkx_nodes(G, pos, node_size=500, node_color='lightblue')
                 
@@ -408,13 +413,13 @@ def main():
                 nx.draw_networkx_edges(G, pos, width=1, edge_color='gray')
                 
                 # 绘制节点标签
-                nx.draw_networkx_labels(G, pos, font_size=10, font_color='black')
+                nx.draw_networkx_labels(G, pos, font_size=10, font_color='black', font_family=font_prop.get_name())
                 
                 # 绘制边的标签
                 edge_labels = nx.get_edge_attributes(G, 'label')
-                nx.draw_networkx_edge_labels(G, pos, edge_labels=edge_labels, font_size=8, font_color='red')
+                nx.draw_networkx_edge_labels(G, pos, edge_labels=edge_labels, font_size=8, font_color='red', font_family=font_prop.get_name())
                 
-                plt.title('合作关系网络图')
+                plt.title('合作关系网络图', fontproperties=font_prop)
                 plt.axis('off')  # 关闭坐标轴
                 
                 # 在 Streamlit 中显示图形
