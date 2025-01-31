@@ -135,7 +135,7 @@ def process_risk_data():
         return G_authors
 
     # ======================
-    # Skip-gram模型定义
+    # Word2Vec（Skip-gram）模型定义
     # ======================
     class SkipGramModel(nn.Module):
         def __init__(self, vocab_size, embedding_size):
