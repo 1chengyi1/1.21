@@ -287,13 +287,18 @@ def main():
     """, unsafe_allow_html=True)
 
     # 侧边栏控制面板
+    # 侧边栏控制面板
     with st.sidebar:
         st.title("控制面板")
         if st.button("🔄 重新计算风险值", help="当原始数据更新后点击此按钮"):
             with st.spinner("重新计算中..."):
                 risk_df, papers, projects = process_risk_data()
-                risk_df.to_excel('risk_scores.xlsx', index = False)
+                risk_df.to_excel('risk_scores.xlsx', index=False)
             st.success("风险值更新完成！")
+    
+        # 添加“返回首页”按钮
+        if st.button("🏠 返回首页", help="点击返回首页"):
+            st.markdown("[点击这里返回首页](https://chengyi10.wordpress.com/)", unsafe_allow_html=True)
 
     # 尝试加载现有数据
     try:
