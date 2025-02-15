@@ -13,10 +13,6 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import Dataset, DataLoader
-import zhipuai
-
-# 设置智谱清言 API 密钥
-zhipuai.api_key = "89c41de3c3a34f62972bc75683c66c72.ZGwzmpwgMfjtmksz"  # 请替换为你自己的 API 密钥
 
 # ==========================
 # 数据预处理和风险值计算模块
@@ -133,7 +129,7 @@ def process_risk_data():
         institution_map = papers.set_index('姓名')['研究机构'].to_dict()
         for a1 in institution_map:
             for a2 in institution_map:
-                if a1 != a2 and institution_map[a1] == institution_map[a2]:
+                if a1!= a2 and institution_map[a1] == institution_map[a2]:
                     G_authors.add_edge(a1, a2, weight=1, reason='研究机构相同')
 
         return G_authors
@@ -257,24 +253,12 @@ def process_risk_data():
         '风险值': list(risk_scores.values())
     }), papers_df, projects_df
 
-# 调用智谱清言 API 生成简历和评价
-def generate_resume_and_evaluation(author, paper_records, project_records, risk_value):
-    prompt = f"请为科研人员 {author} 生成一份简历和评价。该科研人员的论文不端记录如下：{paper_records.to_csv(sep='\t', na_rep='nan')}，项目不端记录如下：{project_records.to_csv(sep='\t', na_rep='nan')}，信用风险值为 {risk_value}。"
-    response = zhipuai.model_api.invoke(
-        model="chatglm_turbo",
-        prompt=[{"role": "user", "content": prompt}]
-    )
-    if response['code'] == 200:
-        return response['data']['choices'][0]['content']
-    else:
-        return f"请求失败，错误代码：{response['code']}，错误信息：{response['msg']}"
-
 # ==========================
 # 可视化界面模块
 # ==========================
 def main():
     st.set_page_config(
-        page_title="科研人员诚信风险预警平台",
+        page_title="科研诚信分析平台",
         page_icon="🔬",
         layout="wide"
     )
@@ -302,20 +286,7 @@ def main():
     </style>
     """, unsafe_allow_html=True)
 
-    # 侧边栏控制面板上方添加智谱清言大模型按钮
-    if st.sidebar.button("🧠 智谱清言生成简历和评价", help="查找科研人员后点击此按钮生成简历和评价"):
-        if 'selected_author' in st.session_state:
-            author = st.session_state.selected_author
-            author_risk = st.session_state.author_risk
-            paper_records = st.session_state.paper_records
-            project_records = st.session_state.project_records
-            with st.spinner("正在调用智谱清言生成简历和评价..."):
-                result = generate_resume_and_evaluation(author, paper_records, project_records, author_risk)
-            st.subheader("📋 智谱清言生成的简历和评价")
-            st.write(result)
-        else:
-            st.warning("请先搜索并选择一个科研人员")
-
+    # 侧边栏控制面板
     # 侧边栏控制面板
     with st.sidebar:
         st.title("控制面板")
@@ -324,7 +295,7 @@ def main():
                 risk_df, papers, projects = process_risk_data()
                 risk_df.to_excel('risk_scores.xlsx', index=False)
             st.success("风险值更新完成！")
-
+    
         # 添加“返回首页”按钮
         if st.button("🏠 返回首页", help="点击返回首页"):
             st.markdown("[点击这里返回首页](https://chengyi10.wordpress.com/)", unsafe_allow_html=True)
@@ -337,10 +308,10 @@ def main():
     except:
         with st.spinner("首次运行需要初始化数据..."):
             risk_df, papers, projects = process_risk_data()
-            risk_df.to_excel('risk_scores.xlsx', index=False)
+            risk_df.to_excel('risk_scores.xlsx', index = False)
 
     # 主界面
-    st.title("🔍 科研人员信用风险预警系统")
+    st.title("🔍 科研人员信用风险分析系统")
 
     # 搜索框
     search_term = st.text_input("输入研究人员姓名：", placeholder="支持模糊搜索...")
@@ -359,12 +330,6 @@ def main():
         author_risk = risk_df[risk_df['作者'] == selected].iloc[0]['风险值']
         paper_records = papers[papers['姓名'] == selected]
         project_records = projects[projects['姓名'] == selected]
-
-        # 保存选中的科研人员信息到 session_state
-        st.session_state.selected_author = selected
-        st.session_state.author_risk = author_risk
-        st.session_state.paper_records = paper_records
-        st.session_state.project_records = project_records
 
         # ======================
         # 信息展示
@@ -391,7 +356,7 @@ def main():
             )
         else:
             st.info("暂无论文不端记录")
-
+        
         st.subheader("📋 项目记录")
         if not project_records.empty:
             st.markdown(project_records.to_html(escape=False), unsafe_allow_html=True)
@@ -415,14 +380,14 @@ def main():
             def build_network_graph(author):
                 G = nx.Graph()
                 G.add_node(author)
-
+                
                 # 查找与查询作者有共同研究机构、研究方向或不端内容的作者
                 related = papers[
                     (papers['研究机构'] == papers[papers['姓名'] == author]['研究机构'].iloc[0]) |
                     (papers['研究方向'] == papers[papers['姓名'] == author]['研究方向'].iloc[0]) |
                     (papers['不端内容'] == papers[papers['姓名'] == author]['不端内容'].iloc[0])
                 ]['姓名'].unique()
-
+                
                 for person in related:
                     if person != author:
                         reason = ''
@@ -434,7 +399,7 @@ def main():
                             reason = '不端内容相关'
                         G.add_node(person)
                         G.add_edge(author, person, label=reason)
-
+                
                 # 使用 plotly 绘制网络图
                 pos = nx.spring_layout(G, k=0.5)  # 布局
                 edge_trace = []
@@ -448,7 +413,7 @@ def main():
                         hoverinfo='text',
                         mode='lines'
                     ))
-
+                    
                     # 计算边的中点位置，用于放置标注文字
                     mid_x = (x0 + x1) / 2
                     mid_y = (y0 + y1) / 2
@@ -463,7 +428,7 @@ def main():
                             font=dict(size=10, color='black')
                         )
                     )
-
+                
                 node_trace = go.Scatter(
                     x=[], y=[], text=[], mode='markers+text', hoverinfo='text',
                     marker=dict(
@@ -477,7 +442,7 @@ def main():
                     node_trace['x'] += tuple([x])
                     node_trace['y'] += tuple([y])
                     node_trace['text'] += tuple([node])
-
+                
                 fig = go.Figure(
                     data=edge_trace + [node_trace],
                     layout=go.Layout(
@@ -491,7 +456,7 @@ def main():
                     )
                 )
                 st.plotly_chart(fig, use_container_width=True)
-
+        
             build_network_graph(selected)
 
 
