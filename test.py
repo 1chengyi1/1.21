@@ -258,7 +258,7 @@ def process_risk_data():
 # ==========================
 def main():
     st.set_page_config(
-        page_title="科研诚信分析平台",
+        page_title="科研人员诚信风险预警平台",
         page_icon="🔬",
         layout="wide"
     )
@@ -311,7 +311,7 @@ def main():
             risk_df.to_excel('risk_scores.xlsx', index = False)
 
     # 主界面
-    st.title("🔍 科研人员信用风险分析系统")
+    st.title("🔍 科研人员信用风险预警系统")
 
     # 搜索框
     search_term = st.text_input("输入研究人员姓名：", placeholder="支持模糊搜索...")
